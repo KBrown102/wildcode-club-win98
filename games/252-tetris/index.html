@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>方块 · 落定成行</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0e13;overflow:hidden;
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;touch-action:none;}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;background:#0e1116;border-radius:14px;
+    box-shadow:0 18px 60px rgba(0,0,0,.55);}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+<script>
+(function(){
+"use strict";
+const COLS=10, ROWS=20, CELL=32;
+const FIELD_X=20, FIELD_Y=20;
+const FIELD_W=COLS*CELL, FIELD_H=ROWS*CELL;     // 320 x 640
+const PANEL_X=352, PANEL_W=112;
+const BAR_Y=672, BAR_H=128;
+const VW=480, VH=800;
+
+const COLORS=[null,
+  "#2ee6e6", // I
+  "#f5d33f", // O
+  "#b46cf0", // T
+  "#5fd35f", // S
+  "#ef5a5a", // Z
+  "#5b8dff", // J
+  "#f59a3f"  // L
+];
+
+// 每种方块 4 个旋转态，坐标为其包围盒内的 [x,y]
+const PIECES={
+  I:{color:1,states:[
+    [[0,1],[1,1],[2,1],[3,1]],
+    [[2,0],[2,1],[2,2],[2,3]],
+    [[0,2],[1,2],[2,2],[3,2]],
+    [[1,0],[1,1],[1,2],[1,3]]]},
+  O:{color:2,states:[
+    [[0,0],[1,0],[0,1],[1,1]],
+    [[0,0],[1,0],[0,1],[1,1]],
+    [[0,0],[1,0],[0,1],[1,1]],
+    [[0,0],[1,0],[0,1],[1,1]]]},
+  T:{color:3,states:[
+    [[1,0],[0,1],[1,1],[2,1]],
+    [[1,0],[1,1],[2,1],[1,2]],
+    [[0,1],[1,1],[2,1],[1,2]],
+    [[1,0],[0,1],[1,1],[1,2]]]},
+  S:{color:4,states:[
+    [[1,0],[2,0],[0,1],[1,1]],
+    [[1,0],[1,1],[2,1],[2,2]],
+    [[1,1],[2,1],[0,2],[1,2]],
+    [[0,0],[0,1],[1,1],[1,2]]]},
+  Z:{color:5,states:[
+    [[0,0],[1,0],[1,1],[2,1]],
+    [[2,0],[1,1],[2,1],[1,2]],
+    [[0,1],[1,1],[1,2],[2,2]],
+    [[1,0],[0,1],[1,1],[0,2]]]},
+  J:{color:6,states:[
+    [[0,0],[0,1],[1,1],[2,1]],
+    [[1,0],[2,0],[1,1],[1,2]],
+    [[0,1],[1,1],[2,1],[2,2]],
+    [[1,0],[1,1],[0,2],[1,2]]]},
+  L:{color:7,states:[
+    [[2,0],[0,1],[1,1],[2,1]],
+    [[1,0],[1,1],[1,2],[2,2]],
+    [[0,1],[1,1],[2,1],[0,2]],
+    [[0,0],[1,0],[1,1],[1,2]]]}
+};
+const TYPES=["I","O","T","S","Z","J","L"];
+
+// ---- 运行时状态 ----
+let board=newBoard(), current=null, holdType=null, holdUsed=false, nextQueue=[], bag=[];
+let score=0, lines=0, level=0, best=0;
+let phase="menu";                 // menu / play / pause / over
+let dropAcc=0, dropInterval=800, softDrop=false;
+let muted=false, particles=[], flash=0, combo=0, lastClearLines=0;
+
+function newBoard(){ return Array.from({length:ROWS},()=>new Array(COLS).fill(0)); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function refillBag(){ bag=shuffle(TYPES.slice()); }
+function ensureQueue(){ while(nextQueue.length<1){ if(bag.length===0) refillBag(); nextQueue.push(bag.pop()); } }
+
+function collides(type,x,y,rot){
+  const st=PIECES[type].states[rot];
+  for(const c of st){
+    const bx=x+c[0], by=y+c[1];
+    if(bx<0||bx>=COLS||by>=ROWS) return true;
+    if(by>=0 && board[by][bx]) return true;
+  }
+  return false;
+}
+function spawnFromType(t){
+  current={type:t, x:(t==="O"?4:3), y:0, rot:0};
+  holdUsed=false;
+  if(collides(current.type,current.x,current.y,current.rot)) gameOver();
+}
+function spawnNext(){ ensureQueue(); const t=nextQueue.shift(); ensureQueue(); spawnFromType(t); }
+
+function lock(){
+  const def=PIECES[current.type];
+  let topOut=false;
+  for(const c of def.states[current.rot]){
+    const bx=current.x+c[0], by=current.y+c[1];
+    if(by<0){ topOut=true; continue; }
+    board[by][bx]=def.color;
+    particles.push({x:FIELD_X+bx*CELL+CELL/2, y:FIELD_Y+by*CELL+CELL/2,
+      vx:(Math.random()-0.5)*2.4, vy:(Math.random()-0.9)*2.4, life:1, c:def.color});
+  }
+  clearLines();
+  if(topOut){ gameOver(); return; }
+  spawnNext();
+}
+function clearLines(){
+  let nb=[];
+  for(let r=0;r<ROWS;r++){ if(board[r].every(v=>v!==0)) {} else nb.push(board[r]); }
+  const cleared=ROWS-nb.length;
+  while(nb.length<ROWS) nb.unshift(new Array(COLS).fill(0));
+  board=nb;
+  if(cleared>0){
+    lines+=cleared;
+    combo++;
+    score += [0,100,300,500,800][cleared]*(level+1) + (combo-1)*50;
+    level=Math.floor(lines/10);
+    dropInterval=Math.max(80, 800-level*70);
+    flash=1; lastClearLines=cleared;
+    tone(520+cleared*90, .09, "square", .07);
+  } else { combo=0; }
+}
+
+function moveLeft(){ if(phase!=="play")return; if(!collides(current.type,current.x-1,current.y,current.rot)){current.x--;tone(220,.03,"square",.03);} }
+function moveRight(){ if(phase!=="play")return; if(!collides(current.type,current.x+1,current.y,current.rot)){current.x++;tone(220,.03,"square",.03);} }
+function rotate(dir){
+  if(phase!=="play")return;
+  const nr=(current.rot+dir+4)%4, kicks=[0,-1,1,-2,2];
+  for(const k of kicks){
+    if(!collides(current.type,current.x+k,current.y,nr)){ current.x+=k; current.rot=nr; tone(330,.04,"square",.04); return; }
+  }
+}
+function softDropStep(){
+  if(phase!=="play")return false;
+  if(!collides(current.type,current.x,current.y+1,current.rot)){ current.y++; score+=1; return true; }
+  lock(); return false;
+}
+function hardDrop(){
+  if(phase!=="play")return;
+  let d=0;
+  while(!collides(current.type,current.x,current.y+1,current.rot)){ current.y++; d++; }
+  score+=d*2;
+  lock();
+}
+function hold(){
+  if(phase!=="play"||holdUsed) return;
+  if(holdType===null){ holdType=current.type; spawnNext(); }
+  else { const t=holdType; holdType=current.type; spawnFromType(t); }
+  holdUsed=true; tone(400,.05,"triangle",.05);
+}
+function gameOver(){
+  phase="over";
+  if(score>best){ best=score; try{localStorage.setItem("tetris_best",String(best));}catch(e){} }
+  tone(180,.4,"sawtooth",.06);
+}
+function start(){
+  board=newBoard(); score=0; lines=0; level=0; combo=0;
+  dropAcc=0; dropInterval=800; holdType=null; holdUsed=false;
+  bag=[]; nextQueue=[]; particles=[]; flash=0; softDrop=false;
+  ensureQueue(); spawnNext();
+  phase="play";
+  try{ best=parseInt(localStorage.getItem("tetris_best")||"0",10)||0; }catch(e){ best=0; }
+}
+
+// ---- 更新 ----
+function update(dt){
+  if(phase!=="play") return;
+  dropAcc+=dt;
+  const iv = softDrop ? Math.min(40, dropInterval) : dropInterval;
+  let guard=0;
+  while(dropAcc>=iv && guard<40){
+    dropAcc-=iv; guard++;
+    if(!collides(current.type,current.x,current.y+1,current.rot)) current.y++;
+    else { lock(); break; }
+  }
+}
+function tick(ms){ update(ms); }
+
+// ---- 渲染 ----
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let scale=1;
+function resize(){
+  const aw=window.innerWidth, ah=window.innerHeight;
+  scale=Math.min(aw/VW, ah/VH);
+  if(scale>1.4) scale=1.4;
+  const cssW=Math.round(VW*scale), cssH=Math.round(VH*scale);
+  const dpr=window.devicePixelRatio||1;
+  canvas.style.width=cssW+"px"; canvas.style.height=cssH+"px";
+  canvas.width=Math.round(cssW*dpr); canvas.height=Math.round(cssH*dpr);
+  ctx.setTransform(canvas.width/VW,0,0,canvas.height/VH,0,0);
+}
+window.addEventListener("resize",resize);
+
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawCell(px,py,s,color){
+  ctx.fillStyle=color; roundRect(px+1,py+1,s-2,s-2,5); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.22)"; roundRect(px+3,py+3,s-6,(s-6)*0.42,3); ctx.fill();
+}
+function drawPieceCells(cells,color,ox,oy,s){
+  for(const c of cells) drawCell(ox+c[0]*s, oy+c[1]*s, s, color);
+}
+function centerCells(cells){
+  let minx=9,miny=9,maxx=-9,maxy=-9;
+  for(const c of cells){ minx=Math.min(minx,c[0]);maxx=Math.max(maxx,c[0]);miny=Math.min(miny,c[1]);maxy=Math.max(maxy,c[1]); }
+  return {minx,miny,w:maxx-minx+1,h:maxy-miny+1};
+}
+function drawPreview(type,ox,oy,box){
+  if(!type) return;
+  const cells=PIECES[type].states[0], color=COLORS[PIECES[type].color];
+  const bb=centerCells(cells);
+  const s=22;
+  const cx=ox+(box-bb.w*s)/2 - bb.minx*s;
+  const cy=oy+(box-bb.h*s)/2 - bb.miny*s;
+  drawPieceCells(cells,color,cx,cy,s);
+}
+
+// 底部按钮
+const BTN=[
+  {id:"left", label:"←", x:16,    y:682, w:144, h:50},
+  {id:"rot",  label:"旋转", x:168, y:682, w:144, h:50},
+  {id:"right",label:"→", x:320,  y:682, w:144, h:50},
+  {id:"soft", label:"软降", x:16,  y:740, w:144, h:50},
+  {id:"hard", label:"硬降", x:168, y:740, w:144, h:50},
+  {id:"pause",label:"暂停", x:320, y:740, w:144, h:50}
+];
+function render(){
+  ctx.clearRect(0,0,VW,VH);
+  // 背景
+  ctx.fillStyle="#0e1116"; ctx.fillRect(0,0,VW,VH);
+  // 场地
+  ctx.fillStyle="#0a0d12"; roundRect(FIELD_X-4,FIELD_Y-4,FIELD_W+8,FIELD_H+8,10); ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,.06)"; ctx.lineWidth=1;
+  for(let c=0;c<=COLS;c++){
+    const x=FIELD_X+c*CELL;
+    ctx.beginPath(); ctx.moveTo(x,FIELD_Y); ctx.lineTo(x,FIELD_Y+FIELD_H); ctx.stroke();
+  }
+  for(let r=0;r<=ROWS;r++){
+    const y=FIELD_Y+r*CELL;
+    ctx.beginPath(); ctx.moveTo(FIELD_X,y); ctx.lineTo(FIELD_X+FIELD_W,y); ctx.stroke();
+  }
+  // 已落方块
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(board[r][c]) drawCell(FIELD_X+c*CELL, FIELD_Y+r*CELL, CELL, COLORS[board[r][c]]);
+  }
+  // 幽灵 + 当前
+  if(phase==="play" && current){
+    const def=PIECES[current.type];
+    let gy=current.y;
+    while(!collides(current.type,current.x,gy+1,current.rot)) gy++;
+    for(const c of def.states[current.rot]){
+      const bx=current.x+c[0], by=gy+c[1];
+      if(by>=0) drawCell(FIELD_X+bx*CELL, FIELD_Y+by*CELL, CELL, "rgba(255,255,255,.16)");
+    }
+    for(const c of def.states[current.rot]){
+      const bx=current.x+c[0], by=current.y+c[1];
+      if(by>=0) drawCell(FIELD_X+bx*CELL, FIELD_Y+by*CELL, CELL, COLORS[def.color]);
+    }
+  }
+  // 消行闪光
+  if(flash>0){
+    ctx.fillStyle="rgba(255,255,255,"+(flash*0.5)+")";
+    ctx.fillRect(FIELD_X,FIELD_Y,FIELD_W,FIELD_H);
+  }
+  // 粒子
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.fillStyle=COLORS[p.c];
+    ctx.fillRect(p.x-2,p.y-2,4,4);
+  }
+  ctx.globalAlpha=1;
+
+  // 侧栏
+  ctx.textBaseline="alphabetic";
+  ctx.fillStyle="#cfd6e4"; ctx.font="600 15px sans-serif"; ctx.fillText("下一个",PANEL_X,38);
+  ctx.fillStyle="rgba(255,255,255,.04)"; roundRect(PANEL_X,48,92,92,8); ctx.fill();
+  drawPreview(nextQueue[0], PANEL_X, 48, 92);
+
+  ctx.fillStyle="#cfd6e4"; ctx.font="600 15px sans-serif"; ctx.fillText("暂存",PANEL_X,170);
+  ctx.fillStyle="rgba(255,255,255,.04)"; roundRect(PANEL_X,180,92,92,8); ctx.fill();
+  drawPreview(holdType, PANEL_X, 180, 92);
+
+  ctx.fillStyle="#9aa3b2"; ctx.font="600 13px sans-serif"; ctx.fillText("分数",PANEL_X,310);
+  ctx.fillStyle="#fff"; ctx.font="700 24px sans-serif"; ctx.fillText(String(score),PANEL_X,338);
+  ctx.fillStyle="#9aa3b2"; ctx.font="600 13px sans-serif";
+  ctx.fillText("等级 "+level+"  ·  行 "+lines, PANEL_X, 372);
+  ctx.fillStyle="#9aa3b2"; ctx.font="600 13px sans-serif"; ctx.fillText("最佳 "+best, PANEL_X, 400);
+  if(muted){ ctx.fillStyle="#ef5a5a"; ctx.font="600 12px sans-serif"; ctx.fillText("静音",PANEL_X,424); }
+
+  // 底部按钮
+  for(const b of BTN){
+    ctx.fillStyle="rgba(255,255,255,.08)"; roundRect(b.x,b.y,b.w,b.h,10); ctx.fill();
+    ctx.fillStyle="#dfe5f0"; ctx.font="700 18px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(b.label, b.x+b.w/2, b.y+b.h/2);
+    ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  }
+
+  // 覆盖层
+  if(phase==="menu"){
+    overlay("方块 · 落定成行","点一下 / 空格 开始","键盘 ←→ 移动  ↑ 旋转  ↓ 软降  空格 硬降  C 暂存");
+  } else if(phase==="pause"){
+    overlay("已暂停","点 暂停 继续","");
+  } else if(phase==="over"){
+    overlay("本局结束","分数 "+score+"  ·  点一下重来","最佳 "+best);
+  }
+}
+function overlay(title,sub,foot){
+  ctx.fillStyle="rgba(8,11,16,.72)"; ctx.fillRect(FIELD_X,FIELD_Y,FIELD_W,FIELD_H);
+  ctx.textAlign="center";
+  ctx.fillStyle="#fff"; ctx.font="700 26px sans-serif"; ctx.fillText(title, FIELD_X+FIELD_W/2, FIELD_Y+260);
+  ctx.fillStyle="#cfd6e4"; ctx.font="600 16px sans-serif"; ctx.fillText(sub, FIELD_X+FIELD_W/2, FIELD_Y+300);
+  if(foot){ ctx.fillStyle="#8b93a3"; ctx.font="500 13px sans-serif"; ctx.fillText(foot, FIELD_X+FIELD_W/2, FIELD_Y+340); }
+  ctx.textAlign="left";
+}
+
+// ---- 音效 ----
+let actx=null;
+function tone(freq,dur,type,vol){
+  if(muted) return;
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||"square"; o.frequency.value=freq;
+    g.gain.value=vol||0.05;
+    o.connect(g); g.connect(actx.destination);
+    o.start();
+    g.gain.setValueAtTime(vol||0.05, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
+    o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+function toggleMute(){ muted=!muted; }
+
+// ---- 主循环 ----
+let lastT=0;
+function frame(t){
+  const dt = lastT ? Math.min(50, t-lastT) : 16; lastT=t;
+  update(dt);
+  // 粒子
+  for(const p of particles){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.18; p.life-=0.04; }
+  particles=particles.filter(p=>p.life>0);
+  if(flash>0) flash=Math.max(0,flash-0.06);
+  render();
+  requestAnimationFrame(frame);
+}
+
+// ---- 输入 ----
+function btnAt(x,y){ for(const b of BTN){ if(x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h) return b.id; } return null; }
+function doBtn(id){
+  if(phase==="over"){ start(); return; }
+  if(phase==="menu"){ start(); return; }
+  if(id==="left") moveLeft();
+  else if(id==="right") moveRight();
+  else if(id==="rot") rotate(1);
+  else if(id==="soft") softDropStep();
+  else if(id==="hard") hardDrop();
+  else if(id==="pause"){ if(phase==="play") phase="pause"; else if(phase==="pause") phase="play"; }
+}
+canvas.addEventListener("pointerdown",function(e){
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)/rect.width*VW;
+  const y=(e.clientY-rect.top)/rect.height*VH;
+  const id=btnAt(x,y);
+  if(id) doBtn(id);
+  else if(phase==="over"||phase==="menu") start();
+});
+// 滑动手势（场地区域）：左右滑移动、下滑软降、上滑暂存
+let touchStart=null;
+canvas.addEventListener("pointerdown",function(e){
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)/rect.width*VW;
+  const y=(e.clientY-rect.top)/rect.height*VH;
+  if(x<FIELD_X||x>FIELD_X+FIELD_W||y<BAR_Y){ touchStart={x,y,t:Date.now()}; }
+});
+canvas.addEventListener("pointerup",function(e){
+  if(!touchStart) return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)/rect.width*VW;
+  const y=(e.clientY-rect.top)/rect.height*VH;
+  const dx=x-touchStart.x, dy=y-touchStart.y;
+  if(phase!=="play"){ touchStart=null; return; }
+  if(Math.abs(dx)<14 && Math.abs(dy)<14){ rotate(1); }              // 轻点旋转
+  else if(Math.abs(dx)>Math.abs(dy)){ if(dx>0) moveRight(); else moveLeft(); }
+  else { if(dy>40) hardDrop(); else if(dy<-40) hold(); else softDropStep(); }
+  touchStart=null;
+});
+
+window.addEventListener("keydown",function(e){
+  if(e.key==="m"||e.key==="M"){ toggleMute(); return; }
+  if(phase==="menu"||phase==="over"){ if(e.key===" "||e.key==="Enter"){ start(); e.preventDefault(); } return; }
+  if(e.key==="p"||e.key==="P"){ if(phase==="play")phase="pause"; else if(phase==="pause")phase="play"; return; }
+  if(phase!=="play") return;
+  switch(e.key){
+    case "ArrowLeft": moveLeft(); e.preventDefault(); break;
+    case "ArrowRight": moveRight(); e.preventDefault(); break;
+    case "ArrowUp": case "x": case "X": rotate(1); e.preventDefault(); break;
+    case "z": case "Z": rotate(-1); e.preventDefault(); break;
+    case "ArrowDown": softDrop=true; e.preventDefault(); break;
+    case " ": hardDrop(); e.preventDefault(); break;
+    case "c": case "C": hold(); e.preventDefault(); break;
+  }
+});
+window.addEventListener("keyup",function(e){ if(e.key==="ArrowDown") softDrop=false; });
+
+// ---- 测试钩子 ----
+window.__GAME={
+  start:start, tick:tick,
+  moveLeft:moveLeft, moveRight:moveRight, rotate:rotate,
+  softDrop:softDropStep, hardDrop:hardDrop, hold:hold,
+  spawnType:function(t){ spawnFromType(t); },
+  setCell:function(r,c,v){ board[r][c]=v; },
+  setCurrent:function(o){ if(o.x!=null)current.x=o.x; if(o.y!=null)current.y=o.y; if(o.rot!=null)current.rot=o.rot; },
+  lockCurrent:function(){ lock(); },
+  forceLineClearTest:function(){
+    for(let c=0;c<COLS;c++) board[ROWS-1][c]=1;
+    const before=lines; clearLines();
+    return {cleared:lines-before, lines:lines, topEmpty:board[0].every(v=>v===0)};
+  },
+  autoStep:function(){
+    if(phase!=="play") return;
+    // 简单 AI：朝中心靠，然后硬降
+    if(current.x>4) moveLeft(); else if(current.x<4) moveRight(); else hardDrop();
+  },
+  getState:function(){
+    let filled=0;
+    if(board){ for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]) filled++; }
+    return {phase:phase, score:score, lines:lines, level:level, best:best,
+      over:(phase==="over"), filled:filled, next:nextQueue[0], hold:holdType,
+      current:current?{type:current.type,x:current.x,y:current.y,rot:current.rot}:null,
+      board:board?board.map(r=>r.slice()):null};
+  },
+  setMute:function(m){ muted=m; },
+  fillTopRows:function(n){ for(let r=0;r<n;r++) for(let c=0;c<COLS;c++) board[r][c]=1; }
+};
+
+// 自动演示（#auto=play）
+if(location.hash.indexOf("auto=play")>=0){
+  start();
+  setInterval(function(){ window.__GAME.autoStep(); }, 350);
+}
+
+resize();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
