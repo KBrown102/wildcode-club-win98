@@ -1,0 +1,383 @@
+/* 叠石 · 一溪 —— 留白水墨 × 中国传统色 */
+:root {
+  --paper: #EFE7D6;
+  --ink: #3B4350;
+  --ink2: #6B7280;
+  --verm: #C4553B;
+  --gold: #D9A441;
+  --teal: #5E8494;
+  --sc: 1;
+  --inv: 1;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #DFD7C3;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stage {
+  position: relative;
+  width: 900px;
+  height: 600px;
+  flex: 0 0 auto;
+  transform: scale(var(--sc));
+  transform-origin: center center;
+  box-shadow: 0 10px 42px rgba(48, 44, 34, .26);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+#cv {
+  display: block;
+  width: 900px;
+  height: 600px;
+  touch-action: none;
+}
+
+/* ── HUD ─────────────────────────────────────────── */
+#hud {
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  width: 196px;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.hcard {
+  background: rgba(247, 242, 231, .82);
+  border: 1px solid rgba(90, 96, 108, .18);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-bottom: 8px;
+}
+
+.hline {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.hrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--ink2);
+}
+
+.hrow span {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(90, 96, 108, .16);
+  overflow: hidden;
+  margin: 2px 0 5px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #7FA9A4, var(--teal));
+  border-radius: 3px;
+}
+
+#tip {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink2);
+  background: rgba(247, 242, 231, .74);
+  border-left: 3px solid rgba(196, 85, 59, .45);
+  padding: 6px 9px;
+  border-radius: 0 8px 8px 0;
+}
+
+#tip.hot {
+  color: var(--verm);
+  border-left-color: var(--verm);
+  font-weight: 700;
+}
+
+#bMute {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 40;
+  pointer-events: auto;
+  border: 1px solid rgba(90, 96, 108, .22);
+  background: rgba(247, 242, 231, .86);
+  color: var(--ink2);
+  border-radius: 8px;
+  padding: 6px 11px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#bMute.off {
+  opacity: .55;
+}
+
+/* ── 底部操作带 ───────────────────────────────────── */
+#pad {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  pointer-events: none;
+  flex-wrap: wrap;
+  padding: 0 10px;
+}
+
+.pk {
+  pointer-events: auto;
+  border: 1px solid rgba(90, 96, 108, .26);
+  background: rgba(247, 242, 231, .92);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0 16px;
+  min-height: calc(44px * var(--inv));
+  height: calc(44px * var(--inv));
+  font-size: calc(15px * var(--inv));
+  font-weight: 700;
+  letter-spacing: .06em;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  min-width: calc(52px * var(--inv));
+}
+
+.pk:active {
+  background: rgba(232, 224, 206, .98);
+  transform: translateY(1px);
+}
+
+.pk.primary {
+  background: linear-gradient(180deg, #D9705A, var(--verm));
+  color: #FBF6EA;
+  border-color: rgba(160, 62, 42, .5);
+  min-width: calc(96px * var(--inv));
+}
+
+.pk.sm {
+  min-width: calc(46px * var(--inv));
+  font-size: calc(13px * var(--inv));
+  font-weight: 600;
+  opacity: .92;
+}
+
+/* ── 弹层 ─────────────────────────────────────────── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(232, 226, 210, .86);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 16px;
+}
+
+.overlay.show {
+  display: flex;
+}
+
+.panel {
+  width: 560px;
+  max-width: 100%;
+  max-height: 94%;
+  overflow: auto;
+  background: #F7F2E7;
+  border: 1px solid rgba(90, 96, 108, .22);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 18px 50px rgba(48, 44, 34, .22);
+}
+
+.panel h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  letter-spacing: .1em;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  letter-spacing: .08em;
+}
+
+.lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink2);
+}
+
+.how {
+  font-size: 12.5px;
+  line-height: 2.0;
+  color: var(--ink2);
+  background: rgba(217, 164, 65, .10);
+  border-left: 3px solid rgba(217, 164, 65, .6);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.how b {
+  color: var(--ink);
+}
+
+.dim {
+  color: #8A8F98;
+  font-size: 12px;
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.lv {
+  border: 1px solid rgba(90, 96, 108, .24);
+  background: #FBF7EE;
+  border-radius: 9px;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-family: inherit;
+  color: var(--ink);
+}
+
+.lv b {
+  font-size: 15px;
+}
+
+.lv span {
+  font-size: 11px;
+  color: var(--ink2);
+}
+
+.lv i {
+  font-size: 10px;
+  font-style: normal;
+  color: var(--gold);
+}
+
+.lv.cur {
+  border-color: var(--verm);
+  background: rgba(196, 85, 59, .08);
+}
+
+.lv.locked {
+  opacity: .40;
+  cursor: not-allowed;
+}
+
+.btns {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.pk.big {
+  min-height: calc(46px * var(--inv));
+  height: calc(46px * var(--inv));
+  padding: 0 26px;
+  font-size: calc(16px * var(--inv));
+}
+
+.stars {
+  font-size: 30px;
+  letter-spacing: .16em;
+  color: rgba(90, 96, 108, .22);
+  margin: 4px 0 6px;
+}
+
+.stars .on {
+  color: var(--gold);
+}
+
+.rows {
+  border-top: 1px solid rgba(90, 96, 108, .16);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.rrow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  line-height: 2.0;
+  color: var(--ink2);
+}
+
+.rrow span {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* compact：小屏收紧，避免面板被撑爆 */
+.compact .hcard {
+  padding: 6px 8px;
+  margin-bottom: 5px;
+}
+
+.compact .hrow {
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.compact #tip {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.compact .panel {
+  padding: 14px 15px;
+}
+
+.compact .panel h1 {
+  font-size: 20px;
+}
+
+.compact .how {
+  line-height: 1.8;
+  font-size: 11.5px;
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#EFE7D6">
+  <title>叠石 · 一溪</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="hcard">
+        <div class="hline"><span id="lvName">1· 浅濑</span></div>
+        <div class="hrow"><label>层数</label><span id="layerTxt">0 / 4</span></div>
+        <div class="hrow"><label>余时</label><span id="time">60s</span></div>
+        <div class="hrow"><label>分数</label><span id="score">0</span></div>
+      </div>
+      <div class="hcard">
+        <div class="hrow"><label>稳定</label><span id="stabTxt">—</span></div>
+        <div class="bar"><i id="stabFill"></i></div>
+        <div class="hrow"><label>石堆</label><span id="stoneTxt">0 块</span></div>
+      </div>
+      <div id="tip">先把最宽的那块放下水，压住溪底</div>
+    </div>
+
+    <button id="bMute">♪ 开</button>
+
+    <div id="pad">
+      <button id="bLeft" class="pk">◀</button>
+      <button id="bRight" class="pk">▶</button>
+      <button id="bDrop" class="pk primary">放 下</button>
+      <button id="bUndo" class="pk">收 回</button>
+      <button id="bSwap" class="pk">换 石</button>
+      <button id="bRestart" class="pk sm">重来</button>
+      <button id="bMenu" class="pk sm">选关</button>
+    </div>
+
+    <div id="menu" class="overlay show">
+      <div class="panel">
+        <h1>叠石 · 一溪</h1>
+        <p class="lead">一条溪，一堆石头，一座只能往上叠的塔。<br>
+          溪水从左边一直推过来，浸得越深推得越狠 —— 底下的石头最吃力。<br>
+          你唯一要守的规矩：<b>上面所有石头的重心，必须落在下面那块石头上。</b></p>
+        <div class="how">
+          <b>◀ ▶ / A D</b>　挪落点　　<b>空格 / 点画面</b>　放下石头<br>
+          <b>Z / R</b>　收回最上面那块（不扣什么，随便试）　　<b>1 2 3</b>　换石头<br>
+          <span class="dim">塌了不罚，只少一块石头。宽石头留给底下，塔往上游偏一点。</span>
+        </div>
+        <div id="levels" class="levels"></div>
+        <div class="btns"><button id="bPlay" class="pk big primary">开 始 叠</button><button id="bClose" class="pk">返回</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result" class="overlay">
+      <div class="panel">
+        <h2 id="rTitle">塔立住了</h2>
+        <p class="lead" id="rSub"></p>
+        <div id="rStars" class="stars"></div>
+        <div class="dim">三星线：<span id="rGoal"></span></div>
+        <div id="rRows" class="rows"></div>
+        <div class="btns"><button id="bAgain" class="pk">再叠</button><button id="bNext" class="pk primary">下一段溪</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/game.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+
+</html>
