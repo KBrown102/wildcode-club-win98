@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>候</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#080a12;
+    -webkit-tap-highlight-color:transparent;touch-action:none;overscroll-behavior:none;}
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%;}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:3;
+    background:radial-gradient(ellipse 80% 74% at 50% 54%,rgba(0,0,0,0) 38%,rgba(0,0,0,.34) 100%);}
+  #dim{position:fixed;inset:0;pointer-events:none;z-index:4;background:#f6e2bd;opacity:0;
+    transition:opacity 1.2s ease;mix-blend-mode:soft-light;}
+  #snd{position:fixed;top:calc(14px + env(safe-area-inset-top));right:calc(14px + env(safe-area-inset-right));
+    z-index:8;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);color:rgba(255,255,255,.62);font-size:15px;line-height:36px;
+    text-align:center;cursor:pointer;padding:0;backdrop-filter:blur(4px);transition:opacity .4s;opacity:.55;}
+  #snd:hover{opacity:.9;}
+  #mask{position:fixed;inset:0;z-index:20;background:#070910;display:flex;align-items:center;
+    justify-content:center;transition:opacity 1.0s ease;}
+  #bStart{width:96px;height:96px;border-radius:50%;border:1px solid rgba(226,214,190,.30);
+    background:radial-gradient(circle at 50% 48%,rgba(232,214,178,.20),rgba(232,214,178,.03) 68%,transparent 72%);
+    cursor:pointer;outline:none;animation:bre 4.6s ease-in-out infinite;}
+  @keyframes bre{0%,100%{transform:scale(1);opacity:.66}50%{transform:scale(1.09);opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="vig"></div>
+<div id="dim"></div>
+<button id="snd">♪</button>
+<div id="mask"><button id="bStart" aria-label="start"></button></div>
+<script>
+"use strict";
+/* ========== 096 · 候 —— 它们在等，不在催 ========== */
+/* 九宫洛书(4 9 2 / 3 5 7 / 8 1 6) × 九音(五声+高八度四音) × 九只等着的光鸟，齐套。 */
+
+var cv=null, ctx=null, W=0, H=0, DPR=1, S=null;
+var mx=0, my=0, running=false;
+
+/* ---------- 工具 ---------- */
+function clockNow(){
+  return (typeof performance!=="undefined"&&performance.now)?performance.now():Date.now();
+}
+function cl(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function ease(t){ return t<0?0:(t>1?1:t*t*(3-2*t)); }
+function rnd(a,b){ return a+Math.random()*(b-a); }
+function mixa(c1,c2,t){
+  t=cl(t,0,1);
+  return [lerp(c1[0],c2[0],t),lerp(c1[1],c2[1],t),lerp(c1[2],c2[2],t)];
+}
+function mixc(c1,c2,t){
+  var c=mixa(c1,c2,t);
+  return "rgb("+Math.round(c[0])+","+Math.round(c[1])+","+Math.round(c[2])+")";
+}
+function rgba(c,a){
+  return "rgba("+Math.round(c[0])+","+Math.round(c[1])+","+Math.round(c[2])+","+a.toFixed(3)+")";
+}
+
+/* ---------- 洛书九宫 ---------- */
+/* 幻方排布：行列对角线和皆 15。LUO[r][c] = 该格的洛书数(1..9) */
+var LUO=[[4,9,2],[3,5,7],[8,1,6]];
+/* 九音：五声宫商角徵羽 + 高八度宫商角徵（C4 D4 E4 G4 A4 C5 D5 E5 G5） */
+var NOTE=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25,783.99];
+function noteOf(n){ return NOTE[cl(n-1,0,8)]; }
+
+/* ---------- 音 ---------- */
+var AC=null, mg=null, sndOn=true;
+function initAudio(){
+  if(AC) return;
+  try{
+    var C=window.AudioContext||window.webkitAudioContext;
+    if(!C) return;
+    AC=new C();
+    mg=AC.createGain(); mg.gain.value=0.24; mg.connect(AC.destination);
+  }catch(e){ AC=null; }
+}
+function bell(f,vol,dur,type,delay){
+  if(!AC||!sndOn) return;
+  try{
+    var t=AC.currentTime+(delay||0), o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||"sine"; o.frequency.value=f;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(mg); o.start(t); o.stop(t+dur+0.06);
+  }catch(e){}
+}
+function airy(vol,dur,freq,q){
+  if(!AC||!sndOn) return;
+  try{
+    var t=AC.currentTime, len=Math.max(1,Math.floor(AC.sampleRate*dur));
+    var buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+    for(var i=0;i<len;i++){ d[i]=(Math.random()*2-1)*(1-i/len); }
+    var src=AC.createBufferSource(); src.buffer=buf;
+    var bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=freq||900; bp.Q.value=q||0.8;
+    var g=AC.createGain(); g.gain.value=vol;
+    src.connect(bp); bp.connect(g); g.connect(mg); src.start(t);
+  }catch(e){}
+}
+/* 回一只鸟：本格音 + 五度泛音 + 飞走的振翅 */
+function sReply(n){
+  var f=noteOf(n);
+  bell(f,0.15,2.0,"sine");
+  bell(f*1.5,0.055,1.4,"sine",0.06);
+  bell(f*0.5,0.06,2.6,"sine");
+  airy(0.035,0.26,1400,0.6);
+}
+/* 鸟飞来停下：极轻一声 */
+function sArrive(n){
+  bell(noteOf(n)*2,0.045,0.9,"sine");
+  airy(0.025,0.22,1800,0.7);
+}
+/* 歇一会儿：低沉呼吸底音 */
+function sRest(){
+  bell(130.81,0.055,3.2,"sine");
+  bell(196.00,0.032,2.6,"sine");
+}
+/* 抬头看窗外 */
+function sSky(){
+  airy(0.04,0.7,1200,0.4);
+  bell(392,0.045,1.6,"sine");
+}
+/* 闲置彩蛋：一只鸟做了个小梦 */
+function sDream(n){ bell(noteOf(n)*0.5,0.05,2.6,"sine"); }
+/* 终章琶音 */
+function sFin(k){
+  var f=noteOf(k+1);
+  bell(f,0.13,3.0,"sine");
+  bell(f*2,0.04,1.8,"sine",0.08);
+}

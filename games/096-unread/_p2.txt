@@ -1,0 +1,180 @@
+
+/* ---------- 布局 ---------- */
+function geo(){
+  var portrait = H>=W;
+  var ww = portrait ? cl(W*0.78,170,520) : cl(Math.min(W*0.54,H*0.64),190,520);
+  var wh = ww*1.04;
+  var cx = W*0.5;
+  var cy = portrait ? H*0.385 : H*0.425;
+  var wx = cx-ww/2, wy = cy-wh/2;
+  var fr = ww*0.052;              /* 窗框厚 */
+  var mb = ww*0.020;              /* 窗棂条厚 */
+  var ix = wx+fr, iy = wy+fr, iw = ww-2*fr, ih = wh-2*fr;
+  var cw = (iw-2*mb)/3, ch = (ih-2*mb)/3;
+  var sill = wy+wh+ww*0.030;
+  var floor = cl(sill + (portrait? H*0.135 : H*0.115), sill+40, H*0.90);
+  return {
+    portrait:portrait, ww:ww, wh:wh, wx:wx, wy:wy, fr:fr, mb:mb,
+    ix:ix, iy:iy, iw:iw, ih:ih, cw:cw, ch:ch,
+    sill:sill, floor:floor,
+    lx: portrait? W*0.235 : W*0.215,
+    ly: floor,
+    ls: cl(Math.min(W,H)/620,0.72,1.35),
+    sc: cl(ww/430,0.52,1.30)
+  };
+}
+function paneRect(g,p){
+  var r=Math.floor(p/3), c=p%3;
+  return { x:g.ix+c*(g.cw+g.mb), y:g.iy+r*(g.ch+g.mb), w:g.cw, h:g.ch };
+}
+
+/* ---------- 状态 ---------- */
+function shuffled(n){
+  var a=[],i,j,t;
+  for(i=0;i<n;i++) a.push(i);
+  for(i=n-1;i>0;i--){ j=Math.floor(Math.random()*(i+1)); t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+function reset(){
+  var order=shuffled(9), birds=[], panes=[], i, r, c;
+  for(i=0;i<9;i++){
+    r=Math.floor(i/3); c=i%3;
+    panes.push({ i:i, n:LUO[r][c], lit:0, mark:0, echo:0, fog:0 });
+  }
+  for(i=0;i<9;i++){
+    var p=order[i];
+    r=Math.floor(p/3); c=p%3;
+    birds.push({
+      i:i, pane:p, n:LUO[r][c],
+      bx: 0.30+Math.random()*0.40,     /* 栖位在格内的横向比例 */
+      here:false, gone:false, replied:false,
+      land:0,                          /* 落定动画 0→1 */
+      sleep:0, wake:1, blink:0, blinkT:2+Math.random()*4,
+      ph:Math.random()*6.283, hop:0, tilt:0,
+      dream:0, dreamY:0,
+      fly:0, fdx:0, fdy:0, frot:0
+    });
+  }
+  var stars=[], k;
+  for(k=0;k<64;k++) stars.push({ x:Math.random(), y:Math.random()*0.72, r:rnd(0.35,1.25), tw:Math.random()*6.283 });
+  var clouds=[];
+  for(k=0;k<5;k++) clouds.push({ x:Math.random(), y:0.10+Math.random()*0.42, w:rnd(0.22,0.46), h:rnd(0.035,0.075), v:rnd(0.0035,0.0095), a:rnd(0.05,0.13) });
+  S={
+    t:0, warmth:0.10, targetW:0.10,
+    holding:false, holdT:0, downX:0, downY:0, lastDownT:-999, dragged:false,
+    birds:birds, panes:panes, stars:stars, clouds:clouds,
+    motes:[], rings:[], ripples:[], sparks:[], flock:[],
+    nextArrive:1.6, arrived:0, replied:0,
+    lamp:0.16, lampT:0.16, breath:0, look:0, moon:0,
+    fin:0, finSeq:-1, finT:0, finGap:0,
+    idle:0, eggT:0
+  };
+}
+
+/* ---------- 光晕 sprite 缓存 ---------- */
+var glowCache={};
+function glow(col,size){
+  var key=Math.round(col[0]/8)+"_"+Math.round(col[1]/8)+"_"+Math.round(col[2]/8)+"_"+size;
+  var c=glowCache[key];
+  if(c) return c;
+  var cn=document.createElement("canvas");
+  cn.width=size; cn.height=size;
+  var g2=cn.getContext("2d");
+  var gr=g2.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+  gr.addColorStop(0,   rgba(col,0.85));
+  gr.addColorStop(0.28,rgba(col,0.34));
+  gr.addColorStop(0.62,rgba(col,0.09));
+  gr.addColorStop(1,   rgba(col,0));
+  g2.fillStyle=gr; g2.fillRect(0,0,size,size);
+  glowCache[key]=cn;
+  return cn;
+}
+function drawGlow(x,y,rad,col,alpha){
+  if(alpha<=0.004||rad<=0.3) return;
+  var sp=glow(col,64);
+  ctx.globalAlpha=cl(alpha,0,1);
+  ctx.drawImage(sp,x-rad,y-rad,rad*2,rad*2);
+  ctx.globalAlpha=1;
+}
+
+/* ---------- 颜色（随暖度） ---------- */
+var COLD_WALL_T=[26,32,50], WARM_WALL_T=[62,48,44];
+var COLD_WALL_B=[16,20,33], WARM_WALL_B=[38,28,27];
+var COLD_FLOOR=[13,16,27],  WARM_FLOOR=[31,22,21];
+var COLD_WOOD=[52,58,78],   WARM_WOOD=[118,84,58];
+var COLD_BIRD=[178,198,226],WARM_BIRD=[248,208,142];
+var LAMPC=[255,198,120];
+function wallTop(){ return mixa(COLD_WALL_T,WARM_WALL_T,S.warmth); }
+function wallBot(){ return mixa(COLD_WALL_B,WARM_WALL_B,S.warmth); }
+function woodC(){  return mixa(COLD_WOOD,WARM_WOOD,S.warmth); }
+function birdC(b){ return mixa(COLD_BIRD,WARM_BIRD,cl(S.warmth*0.85+b.land*0.10,0,1)); }
+
+/* ---------- 粒子 ---------- */
+function addMote(x,y,tx,ty,dl,col){
+  if(S.motes.length>150) return;
+  S.motes.push({ x:x, y:y, sx:x, sy:y, tx:tx, ty:ty, t:-dl, life:0.95+Math.random()*0.5,
+                 col:col||LAMPC, r:rnd(1.1,2.4), sw:rnd(-24,24) });
+}
+function addRing(x,y,r0,r1,life,col,wd){
+  if(S.rings.length>26) return;
+  S.rings.push({ x:x, y:y, r0:r0, r1:r1, t:0, life:life, col:col||LAMPC, wd:wd||1.4 });
+}
+function addRipple(nx,ny,life){
+  if(S.ripples.length>14) return;
+  S.ripples.push({ x:nx, y:ny, t:0, life:life||2.4 });
+}
+function addSpark(x,y,col){
+  if(S.sparks.length>140) return;
+  S.sparks.push({ x:x, y:y, vx:rnd(-26,26), vy:rnd(-52,-14), t:0,
+                  life:rnd(0.9,1.9), r:rnd(0.9,2.1), col:col||LAMPC });
+}
+
+/* ---------- 动词 ---------- */
+function replyBird(b,g){
+  if(!b.here||b.gone||b.replied) return;
+  var pr=paneRect(g,b.pane);
+  var bxp=pr.x+pr.w*b.bx, byp=pr.y+pr.h;
+  b.replied=true; b.gone=true; b.fly=0.0001;
+  b.fdx=(b.bx<0.5?-1:1)*rnd(0.35,0.85);
+  b.fdy=-rnd(0.9,1.4);
+  b.wake=1; b.sleep=Math.max(0,b.sleep-0.4);
+  var pane=S.panes[b.pane];
+  pane.mark=Math.max(pane.mark,0.001);
+  /* 你给它的一点暖光：从灯流向它 */
+  var k;
+  for(k=0;k<7;k++) addMote(g.lx,g.ly-42*g.ls,bxp+rnd(-8,8),byp+rnd(-14,2),k*0.055,LAMPC);
+  for(k=0;k<9;k++) addSpark(bxp+rnd(-5,5),byp-6+rnd(-4,4),mixa(LAMPC,[255,238,206],0.4));
+  addRing(bxp,byp-8,4,30*g.sc,1.5,[255,214,158],1.3);
+  S.replied++;
+  S.warmth=cl(S.warmth-replyCost(),0.04,1);
+  S.lampT=cl(S.lampT+0.05,0,1);
+  sReply(b.n);
+  S.idle=0;
+}
+function replyCost(){ return 0.085*(1-S.warmth*0.92); }
+
+function doRest(dt,g){
+  var gain=0.052*(1+0.55*(1-S.warmth));
+  S.warmth=cl(S.warmth+gain*dt,0,1);
+  S.lampT=cl(S.lampT+0.34*dt,0,1);
+  var i;
+  for(i=0;i<S.birds.length;i++){
+    var b=S.birds[i];
+    if(b.here&&!b.gone) b.sleep=cl(b.sleep+0.30*dt,0,1);
+  }
+  for(i=0;i<S.panes.length;i++) S.panes[i].fog=cl(S.panes[i].fog+0.20*dt,0,0.5);
+}
+function doLook(x,y,g){
+  S.look=cl(S.look+0.10,0,1);
+  S.moon=cl(S.moon+0.07,0,1);
+  S.warmth=cl(S.warmth+0.008,0,1);
+  var nx=cl((x-g.ix)/g.iw,0,1), ny=cl((y-g.iy)/g.ih,0,1);
+  addRipple(nx,ny,2.6);
+  var i;
+  for(i=0;i<S.panes.length;i++){
+    if(S.panes[i].mark>0.4) S.panes[i].echo=1;
+  }
+  for(i=0;i<S.clouds.length;i++) S.clouds[i].a=Math.max(0.035,S.clouds[i].a-0.012);
+  sSky();
+  S.idle=0;
+}

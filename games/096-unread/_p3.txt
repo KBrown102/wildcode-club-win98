@@ -1,0 +1,199 @@
+
+/* ---------- 更新 ---------- */
+function update(dt){
+  if(dt>0.05) dt=0.05;
+  var g=geo(), i, b;
+  S.t+=dt;
+  S.idle+=dt;
+  S.breath+=dt*0.55;
+
+  /* 灯 */
+  if(S.holding) S.holdT+=dt; else S.holdT=0;
+  if(S.holding&&S.holdT>0.16) doRest(dt,g);
+  S.lampT=cl(S.lampT-0.055*dt,0.16,1);
+  S.lamp+=(S.lampT-S.lamp)*Math.min(1,dt*3.0);
+  S.look=cl(S.look-0.055*dt,0,1);
+  S.moon=cl(S.moon-0.018*dt,0,1);
+
+  /* 鸟来（不催，只是来了就停着） */
+  if(S.arrived<9&&!S.fin){
+    S.nextArrive-=dt;
+    if(S.nextArrive<=0){
+      b=S.birds[S.arrived];
+      b.here=true; b.land=0.0001;
+      S.arrived++;
+      S.nextArrive=8.5+Math.random()*5.5;
+      sArrive(b.n);
+    }
+  }
+
+  /* 鸟 */
+  for(i=0;i<S.birds.length;i++){
+    b=S.birds[i];
+    b.ph+=dt*(0.55+0.22*i*0.1);
+    if(b.here&&!b.gone){
+      if(b.land<1) b.land=cl(b.land+dt*0.85,0,1);
+      /* 没人理它也不会走，只会慢慢睡着 */
+      var slp=S.holding?0.30:0.055;
+      b.sleep=cl(b.sleep+slp*dt,0,1);
+      b.wake=1-b.sleep*0.85;
+      b.blinkT-=dt;
+      if(b.blinkT<=0){ b.blink=1; b.blinkT=3.2+Math.random()*5.5; }
+      b.blink=Math.max(0,b.blink-dt*2.2);
+      b.hop=Math.max(0,b.hop-dt*2.0);
+      b.tilt=Math.sin(b.ph*0.7)*0.06*(1-b.sleep);
+      /* 睡着的鸟偶尔做个小梦 */
+      if(b.sleep>0.7&&b.dream<=0&&Math.random()<dt*0.045){ b.dream=1; b.dreamY=0; }
+      if(b.dream>0){
+        b.dream=Math.max(0,b.dream-dt*0.42);
+        b.dreamY+=dt*13;
+      }
+    }
+    if(b.fly>0&&b.fly<1){
+      b.fly=cl(b.fly+dt*0.46,0,1);
+      b.frot+=dt*1.6;
+    }
+  }
+
+  /* 格子的余温 */
+  for(i=0;i<S.panes.length;i++){
+    var p=S.panes[i];
+    if(p.mark>0) p.mark=cl(p.mark+dt*0.55,0,1);
+    var tl=p.mark*(0.55+0.45*S.warmth);
+    p.lit+=(tl-p.lit)*Math.min(1,dt*1.6);
+    p.echo=Math.max(0,p.echo-dt*0.55);
+    p.fog=Math.max(0,p.fog-dt*0.10);
+  }
+
+  /* 光尘 */
+  for(i=S.motes.length-1;i>=0;i--){
+    var m=S.motes[i];
+    m.t+=dt;
+    if(m.t<0) continue;
+    var k=cl(m.t/m.life,0,1), e=ease(k);
+    m.x=lerp(m.sx,m.tx,e)+Math.sin(k*4.4+i)*m.sw*(1-e)*0.5;
+    m.y=lerp(m.sy,m.ty,e)-Math.sin(k*3.14)*26;
+    if(k>=1) S.motes.splice(i,1);
+  }
+  for(i=S.sparks.length-1;i>=0;i--){
+    var s=S.sparks[i];
+    s.t+=dt;
+    s.x+=s.vx*dt; s.y+=s.vy*dt; s.vy+=16*dt; s.vx*=0.985;
+    if(s.t>=s.life) S.sparks.splice(i,1);
+  }
+  for(i=S.rings.length-1;i>=0;i--){
+    S.rings[i].t+=dt;
+    if(S.rings[i].t>=S.rings[i].life) S.rings.splice(i,1);
+  }
+  for(i=S.ripples.length-1;i>=0;i--){
+    S.ripples[i].t+=dt;
+    if(S.ripples[i].t>=S.ripples[i].life) S.ripples.splice(i,1);
+  }
+
+  /* 云 */
+  for(i=0;i<S.clouds.length;i++){
+    var c=S.clouds[i];
+    c.x+=c.v*dt*(0.5+S.look*0.9);
+    if(c.x-c.w>1.05) c.x=-c.w-0.05;
+  }
+
+  /* 终章：九只都回过了 */
+  if(!S.fin&&S.replied>=9){
+    S.fin=1; S.finSeq=0; S.finGap=0.35; S.finT=0;
+    S.flock=[];
+    for(i=0;i<9;i++){
+      S.flock.push({ i:i, t:-0.5-i*0.16, x:-0.15-i*0.06, y:0.30+Math.sin(i*1.1)*0.10, s:rnd(0.7,1.05) });
+    }
+  }
+  if(S.fin){
+    S.finT+=dt;
+    S.warmth=cl(S.warmth+dt*0.10,0,1);
+    if(S.finSeq>=0&&S.finSeq<9){
+      S.finGap-=dt;
+      if(S.finGap<=0){
+        var num=S.finSeq+1, pi=-1;
+        for(i=0;i<9;i++){ if(S.panes[i].n===num){ pi=i; break; } }
+        if(pi>=0){
+          S.panes[pi].echo=1.4;
+          var pr=paneRect(g,pi);
+          addRing(pr.x+pr.w/2,pr.y+pr.h/2,3,pr.w*0.62,1.8,[255,222,168],1.2);
+        }
+        sFin(S.finSeq);
+        S.finSeq++;
+        S.finGap=0.42;
+      }
+    }
+    for(i=0;i<S.flock.length;i++){
+      var f=S.flock[i];
+      f.t+=dt;
+      if(f.t>0){ f.x+=dt*0.085; f.y+=Math.sin(f.t*0.9+i)*dt*0.026; }
+    }
+  }
+
+  /* 闲置彩蛋：某只睡着的鸟自己亮一下 */
+  S.eggT-=dt;
+  if(S.idle>15.5&&S.eggT<=0){
+    var cand=[];
+    for(i=0;i<S.birds.length;i++){ if(S.birds[i].here&&!S.birds[i].gone) cand.push(S.birds[i]); }
+    if(cand.length){
+      var pick=cand[Math.floor(Math.random()*cand.length)];
+      pick.hop=1; pick.dream=1; pick.dreamY=0; pick.blink=1;
+      sDream(pick.n);
+      S.eggT=7.5+Math.random()*5;
+      S.idle=0;
+    } else {
+      S.eggT=4;
+    }
+  }
+
+  /* CSS 暖光层 */
+  var dimEl=document.getElementById("dim");
+  if(dimEl){
+    var op=(S.warmth*0.42+S.fin*0.14).toFixed(3);
+    if(dimEl.__op!==op){ dimEl.style.opacity=op; dimEl.__op=op; }
+  }
+}
+
+/* ---------- 输入 ---------- */
+function hitBird(x,y,g){
+  var i,b,pr,bxp,byp,rr;
+  for(i=0;i<S.birds.length;i++){
+    b=S.birds[i];
+    if(!b.here||b.gone) continue;
+    pr=paneRect(g,b.pane);
+    bxp=pr.x+pr.w*b.bx; byp=pr.y+pr.h;
+    rr=Math.max(20,26*g.sc);
+    var dx=x-bxp, dy=y-(byp-13*g.sc);
+    if(dx*dx+dy*dy<rr*rr) return b;
+  }
+  return null;
+}
+function onDown(x,y){
+  if(!S) return;
+  var now=clockNow();
+  if(now-S.lastDownT<70&&Math.abs(x-S.downX)<8&&Math.abs(y-S.downY)<8) return;
+  S.lastDownT=now; S.downX=x; S.downY=y; S.dragged=false;
+  S.holding=true; S.holdT=0;
+  S.idle=0;
+}
+function onMove(x,y){
+  mx=x; my=y;
+  if(!S) return;
+  if(S.holding&&(Math.abs(x-S.downX)>8||Math.abs(y-S.downY)>8)) S.dragged=true;
+}
+function onUp(x,y){
+  if(!S) return;
+  var g=geo();
+  var wasHold=S.holdT;
+  S.holding=false;
+  if(wasHold>0.34){
+    /* 歇完了，松手荡开一圈呼吸 */
+    addRing(S.downX,S.downY,6,120*g.ls,2.2,[255,206,148],1.1);
+    sRest();
+    S.idle=0;
+    return;
+  }
+  var b=hitBird(S.downX,S.downY,g);
+  if(b){ replyBird(b,g); return; }
+  doLook(S.downX,S.downY,g);
+}

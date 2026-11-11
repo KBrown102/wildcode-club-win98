@@ -1,0 +1,99 @@
+
+/* ---------- 尺寸 ---------- */
+function resize(){
+  W=window.innerWidth||800;
+  H=window.innerHeight||600;
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  if(cv){
+    cv.width=Math.max(1,Math.floor(W*DPR));
+    cv.height=Math.max(1,Math.floor(H*DPR));
+    cv.style.width=W+"px";
+    cv.style.height=H+"px";
+  }
+  if(ctx) ctx.setTransform(DPR,0,0,DPR,0,0);
+  gcache.k="";
+}
+
+/* ---------- 主循环 ---------- */
+var last=0;
+function frame(ts){
+  if(!running) return;
+  if(!last) last=ts;
+  var dt=(ts-last)/1000;
+  last=ts;
+  if(dt>0.12) dt=0.12;
+  if(dt<0) dt=0;
+  try{ update(dt); draw(); }catch(e){ if(window.console) console.error(e); }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 启动 ---------- */
+function boot(){
+  cv=document.getElementById("cv");
+  if(!cv) return;
+  ctx=cv.getContext("2d");
+  resize();
+  reset();
+  mx=W*0.5; my=H*0.5;
+
+  window.addEventListener("resize",function(){ resize(); },{passive:true});
+  window.addEventListener("orientationchange",function(){ setTimeout(resize,220); },{passive:true});
+
+  cv.addEventListener("pointerdown",function(e){
+    e.preventDefault();
+    onDown(e.clientX,e.clientY);
+  },{passive:false});
+  window.addEventListener("pointermove",function(e){
+    onMove(e.clientX,e.clientY);
+  },{passive:true});
+  window.addEventListener("pointerup",function(e){
+    onUp(e.clientX,e.clientY);
+  },{passive:true});
+  window.addEventListener("pointercancel",function(){
+    if(S) S.holding=false;
+  },{passive:true});
+
+  var snd=document.getElementById("snd");
+  if(snd){
+    snd.addEventListener("pointerdown",function(e){
+      e.stopPropagation();
+      sndOn=!sndOn;
+      snd.textContent=sndOn?"♪":"·";
+      snd.style.opacity=sndOn?"0.55":"0.28";
+    },{passive:false});
+  }
+
+  var mask=document.getElementById("mask"), bStart=document.getElementById("bStart");
+  function start(){
+    initAudio();
+    if(AC&&AC.state==="suspended"){ try{ AC.resume(); }catch(e){} }
+    if(mask){
+      mask.style.opacity="0";
+      mask.style.pointerEvents="none";
+      setTimeout(function(){ if(mask&&mask.parentNode) mask.parentNode.removeChild(mask); },1100);
+    }
+    if(!running){ running=true; last=0; requestAnimationFrame(frame); }
+    bell(261.63,0.07,2.4,"sine");
+    bell(392.00,0.04,2.0,"sine",0.18);
+  }
+  if(bStart) bStart.addEventListener("click",start,{passive:true});
+  if(mask) mask.addEventListener("click",start,{passive:true});
+
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden){ if(S) S.holding=false; }
+    last=0;
+  });
+}
+
+/* 测试钩子 */
+Object.defineProperty(window,"__G",{ get:function(){
+  return { S:S, geo:geo, update:update, draw:draw, reset:reset, paneRect:paneRect,
+           onDown:onDown, onUp:onUp, onMove:onMove, hitBird:hitBird, LUO:LUO, NOTE:NOTE,
+           replyCost:replyCost, W:function(){return W;}, H:function(){return H;} };
+}});
+
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
+else boot();
+</script>
+</body>
+</html>

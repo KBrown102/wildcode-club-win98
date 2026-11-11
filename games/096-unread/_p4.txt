@@ -1,0 +1,408 @@
+
+/* ---------- 绘制：缓存渐变 ---------- */
+var gcache={ k:"", wall:null, sky:null, floor:null };
+function gradKey(g){
+  return W+"_"+H+"_"+Math.round(S.warmth*24)+"_"+Math.round(S.look*8)+"_"+Math.round(g.floor);
+}
+function buildGrads(g){
+  var k=gradKey(g);
+  if(gcache.k===k&&gcache.wall) return;
+  var wt=wallTop(), wb=wallBot();
+  var gw=ctx.createLinearGradient(0,0,0,H);
+  gw.addColorStop(0,   rgba(wt,1));
+  gw.addColorStop(0.62,rgba(mixa(wt,wb,0.7),1));
+  gw.addColorStop(1,   rgba(wb,1));
+  var gf=ctx.createLinearGradient(0,g.floor,0,H);
+  gf.addColorStop(0,rgba(mixa(COLD_FLOOR,WARM_FLOOR,S.warmth),1));
+  gf.addColorStop(1,rgba(mixa([8,10,18],[22,15,15],S.warmth),1));
+  var gs=ctx.createLinearGradient(0,g.iy,0,g.iy+g.ih);
+  var lk=S.look;
+  gs.addColorStop(0,   rgba(mixa([10,14,32],[16,22,48],lk),1));
+  gs.addColorStop(0.58,rgba(mixa([16,22,46],[24,32,64],lk),1));
+  gs.addColorStop(0.88,rgba(mixa([30,34,58],[44,46,74],lk),1));
+  gs.addColorStop(1,   rgba(mixa([46,42,58],[66,56,66],lk),1));
+  gcache.k=k; gcache.wall=gw; gcache.sky=gs; gcache.floor=gf;
+}
+
+/* ---------- 绘制：一只鸟 ---------- */
+function drawBird(b,x,y,u,col,alpha,flap){
+  if(alpha<=0.01) return;
+  var sl=b.sleep, aw=1-sl;
+  var br=0.5+0.5*Math.sin(b.ph*1.1);                  /* 呼吸 */
+  var lift=b.hop*6*(u/12);
+  var bodyRY=u*0.62*(1+sl*0.16)+br*u*0.03;
+  var bodyRX=u*0.86*(1+sl*0.07);
+  var face=b.bx<0.5?1:-1;
+  ctx.save();
+  ctx.translate(x,y-lift);
+  ctx.globalAlpha=alpha;
+  ctx.rotate(b.tilt*aw);
+
+  /* 光晕 */
+  drawGlow(0,-u*0.75,u*3.1,col,(0.10+0.16*aw+0.10*br*aw)*alpha);
+
+  /* 腿（醒着才伸出来） */
+  ctx.strokeStyle=rgba(mixa(col,[40,40,48],0.45),0.55*aw+0.12);
+  ctx.lineWidth=Math.max(0.8,u*0.075);
+  ctx.beginPath();
+  var lgh=u*0.30*aw+u*0.05;
+  ctx.moveTo(-u*0.16,-lgh); ctx.lineTo(-u*0.16,0);
+  ctx.moveTo( u*0.16,-lgh); ctx.lineTo( u*0.16,0);
+  ctx.stroke();
+
+  var cy=-lgh-bodyRY*0.92;
+  /* 身体 */
+  ctx.fillStyle=rgba(col,0.90);
+  ctx.beginPath();
+  ctx.ellipse(0,cy,bodyRX,bodyRY,0,0,6.2832);
+  ctx.fill();
+  /* 尾 */
+  ctx.beginPath();
+  ctx.moveTo(-face*bodyRX*0.72,cy-u*0.02);
+  ctx.lineTo(-face*(bodyRX+u*0.62),cy-u*0.30-sl*u*0.10);
+  ctx.lineTo(-face*(bodyRX*0.80),cy+u*0.24);
+  ctx.closePath();
+  ctx.fill();
+  /* 翅 */
+  ctx.fillStyle=rgba(mixa(col,[255,255,255],0.14),0.62);
+  ctx.save();
+  ctx.translate(-face*u*0.10,cy);
+  ctx.rotate(face*(flap? Math.sin(flap*11)*0.85 : (-0.10-sl*0.10)));
+  ctx.beginPath();
+  ctx.ellipse(0,0,bodyRX*0.66,bodyRY*0.52,0,0,6.2832);
+  ctx.fill();
+  ctx.restore();
+  /* 头 */
+  var hx=face*(bodyRX*0.70)*(1-sl*0.62);
+  var hy=cy-bodyRY*(0.78-sl*0.52);
+  var hr=u*0.44;
+  ctx.fillStyle=rgba(col,0.94);
+  ctx.beginPath();
+  ctx.arc(hx,hy,hr,0,6.2832);
+  ctx.fill();
+  /* 喙 */
+  if(sl<0.75){
+    ctx.fillStyle=rgba(mixa(col,[250,196,120],0.55),0.85*(1-sl));
+    ctx.beginPath();
+    ctx.moveTo(hx+face*hr*0.86,hy+u*0.02);
+    ctx.lineTo(hx+face*(hr+u*0.34),hy+u*0.10);
+    ctx.lineTo(hx+face*hr*0.80,hy+u*0.17);
+    ctx.closePath();
+    ctx.fill();
+  }
+  /* 眼：醒着是一点暗芒，眨眼/睡着是一道弧 */
+  var eo=1-b.blink;
+  ctx.strokeStyle="rgba(38,36,48,"+(0.55*aw+0.30).toFixed(3)+")";
+  ctx.lineWidth=Math.max(0.8,u*0.085);
+  if(sl>0.55||eo<0.35){
+    ctx.beginPath();
+    ctx.arc(hx+face*hr*0.18,hy-u*0.02,hr*0.34,0.35,2.79);
+    ctx.stroke();
+  }else{
+    ctx.fillStyle="rgba(34,32,44,"+(0.62*aw+0.22).toFixed(3)+")";
+    ctx.beginPath();
+    ctx.arc(hx+face*hr*0.20,hy-u*0.04,hr*0.24,0,6.2832);
+    ctx.fill();
+  }
+  /* 梦泡 */
+  if(b.dream>0){
+    var da=b.dream*0.5;
+    drawGlow(hx+face*u*0.5,hy-u*0.9-b.dreamY,u*1.5,mixa(col,[255,236,200],0.5),da*0.75);
+    ctx.fillStyle=rgba([255,240,214],da*0.5);
+    ctx.beginPath();
+    ctx.arc(hx+face*u*0.5,hy-u*0.9-b.dreamY,u*0.16*b.dream+u*0.05,0,6.2832);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------- 绘制：主 ---------- */
+function draw(){
+  var g=geo(), i, b, pr;
+  buildGrads(g);
+
+  /* 硬清屏（墙面渐变铺满） */
+  ctx.fillStyle=gcache.wall;
+  ctx.fillRect(0,0,W,H);
+
+  /* 地面 */
+  ctx.fillStyle=gcache.floor;
+  ctx.fillRect(0,g.floor,W,H-g.floor);
+  ctx.strokeStyle=rgba(mixa([40,46,64],[92,68,52],S.warmth),0.35);
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,g.floor+0.5); ctx.lineTo(W,g.floor+0.5); ctx.stroke();
+
+  /* 灯光在墙上/地上的光池 */
+  var lampY=g.ly-46*g.ls;
+  drawGlow(g.lx,lampY,Math.min(W,H)*(0.46+S.lamp*0.30),LAMPC,0.10+S.lamp*0.16);
+  drawGlow(g.lx,g.floor+6,Math.min(W,H)*0.20,LAMPC,0.06+S.lamp*0.10);
+
+  /* ===== 窗 ===== */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(g.ix,g.iy,g.iw,g.ih);
+  ctx.clip();
+
+  /* 夜空 */
+  ctx.fillStyle=gcache.sky;
+  ctx.fillRect(g.ix,g.iy,g.iw,g.ih);
+
+  /* 星 */
+  for(i=0;i<S.stars.length;i++){
+    var st=S.stars[i];
+    var tw=0.35+0.65*(0.5+0.5*Math.sin(S.t*0.8+st.tw));
+    ctx.fillStyle=rgba([226,234,250],tw*(0.42+S.look*0.30));
+    ctx.beginPath();
+    ctx.arc(g.ix+st.x*g.iw,g.iy+st.y*g.ih,st.r*(0.8+g.sc*0.4),0,6.2832);
+    ctx.fill();
+  }
+
+  /* 月 */
+  var mox=g.ix+g.iw*0.735, moy=g.iy+g.ih*0.205, mr=g.iw*0.062;
+  drawGlow(mox,moy,mr*5.2,[214,226,248],0.10+S.moon*0.16);
+  ctx.fillStyle=rgba([236,240,250],0.72+S.moon*0.22);
+  ctx.beginPath(); ctx.arc(mox,moy,mr,0,6.2832); ctx.fill();
+  ctx.fillStyle=gcache.sky;
+  ctx.globalAlpha=0.92;
+  ctx.beginPath(); ctx.arc(mox-mr*0.46,moy-mr*0.22,mr*0.94,0,6.2832); ctx.fill();
+  ctx.globalAlpha=1;
+
+  /* 云 */
+  for(i=0;i<S.clouds.length;i++){
+    var c=S.clouds[i];
+    var cxp=g.ix+c.x*g.iw, cyp=g.iy+c.y*g.ih, cwp=c.w*g.iw, chp=c.h*g.ih;
+    ctx.fillStyle=rgba(mixa([150,164,196],[210,186,168],S.warmth*0.5),c.a);
+    ctx.beginPath();
+    ctx.ellipse(cxp,cyp,cwp*0.5,chp*0.5,0,0,6.2832);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cxp+cwp*0.20,cyp+chp*0.16,cwp*0.32,chp*0.38,0,0,6.2832);
+    ctx.fill();
+  }
+
+  /* 远处屋脊剪影 */
+  var sky0=g.iy+g.ih*0.78;
+  ctx.fillStyle=rgba(mixa([8,11,22],[20,15,20],S.warmth*0.6),0.92);
+  ctx.beginPath();
+  ctx.moveTo(g.ix,g.iy+g.ih);
+  var segs=[[0.00,0.00],[0.07,0.045],[0.16,0.045],[0.19,0.085],[0.31,0.085],[0.34,0.030],
+            [0.46,0.030],[0.50,0.070],[0.63,0.070],[0.66,0.020],[0.78,0.020],[0.82,0.060],
+            [0.93,0.060],[0.97,0.028],[1.00,0.028]];
+  for(i=0;i<segs.length;i++){
+    ctx.lineTo(g.ix+segs[i][0]*g.iw, sky0-segs[i][1]*g.ih);
+  }
+  ctx.lineTo(g.ix+g.iw,g.iy+g.ih);
+  ctx.closePath();
+  ctx.fill();
+  /* 远处也有亮着的窗 */
+  for(i=0;i<6;i++){
+    var wxp=g.ix+g.iw*(0.09+i*0.155), wyp=sky0-g.ih*0.012;
+    var fl=0.30+0.30*Math.sin(S.t*0.5+i*1.7);
+    ctx.fillStyle=rgba([255,206,140],fl*(0.30+S.warmth*0.25));
+    ctx.fillRect(wxp,wyp,Math.max(1.2,g.iw*0.010),Math.max(1.6,g.ih*0.014));
+  }
+
+  /* 抬头看时的空气涟漪 */
+  for(i=0;i<S.ripples.length;i++){
+    var rp=S.ripples[i], k=cl(rp.t/rp.life,0,1);
+    ctx.strokeStyle=rgba([210,224,250],(1-k)*0.16);
+    ctx.lineWidth=1.1;
+    ctx.beginPath();
+    ctx.ellipse(g.ix+rp.x*g.iw,g.iy+rp.y*g.ih,ease(k)*g.iw*0.52,ease(k)*g.iw*0.38,0,0,6.2832);
+    ctx.stroke();
+  }
+
+  /* 终章归来的鸟群（在远空掠过一圈） */
+  if(S.fin){
+    for(i=0;i<S.flock.length;i++){
+      var f=S.flock[i];
+      if(f.t<=0) continue;
+      var fxp=g.ix+f.x*g.iw, fyp=g.iy+f.y*g.ih;
+      if(f.x>1.2) continue;
+      var fa=cl(1-Math.abs(f.x-0.5)*1.3,0,1)*0.85;
+      ctx.strokeStyle=rgba([250,224,178],fa*0.75);
+      ctx.lineWidth=Math.max(1,g.iw*0.006*f.s);
+      var wsp=Math.sin(S.t*6+i)*0.5;
+      var ws=g.iw*0.017*f.s;
+      ctx.beginPath();
+      ctx.moveTo(fxp-ws,fyp-ws*wsp);
+      ctx.quadraticCurveTo(fxp,fyp+ws*0.30,fxp+ws,fyp-ws*wsp);
+      ctx.stroke();
+    }
+  }
+
+  /* 格子的余温 + 记号 */
+  for(i=0;i<S.panes.length;i++){
+    var p=S.panes[i];
+    pr=paneRect(g,i);
+    var lt=p.lit+p.echo*0.5;
+    if(lt>0.01){
+      drawGlow(pr.x+pr.w*0.5,pr.y+pr.h*0.62,pr.w*0.78,[255,204,146],cl(lt*0.26,0,0.45));
+    }
+    if(p.fog>0.01){
+      ctx.fillStyle=rgba([226,232,244],p.fog*0.13);
+      ctx.fillRect(pr.x,pr.y,pr.w,pr.h);
+    }
+  }
+  /* 鸟停过的地方留一点光 */
+  for(i=0;i<S.birds.length;i++){
+    b=S.birds[i];
+    if(b.mark===undefined) b.mark=0;
+    var pn=S.panes[b.pane];
+    if(b.replied&&pn.mark>0.02){
+      pr=paneRect(g,b.pane);
+      var mxp=pr.x+pr.w*b.bx, myp=pr.y+pr.h-2;
+      drawGlow(mxp,myp,18*g.sc,[255,214,158],pn.mark*0.36);
+      ctx.fillStyle=rgba([255,232,198],pn.mark*0.55);
+      ctx.beginPath(); ctx.arc(mxp,myp,Math.max(1,1.7*g.sc),0,6.2832); ctx.fill();
+    }
+  }
+
+  /* 鸟 */
+  var u=g.cw*0.105;
+  for(i=0;i<S.birds.length;i++){
+    b=S.birds[i];
+    if(!b.here) continue;
+    pr=paneRect(g,b.pane);
+    var bxp=pr.x+pr.w*b.bx, byp=pr.y+pr.h;
+    var col=birdC(b);
+    if(b.gone){
+      if(b.fly>0&&b.fly<1){
+        var e=ease(b.fly);
+        var fx=bxp+b.fdx*g.cw*1.5*e;
+        var fy=byp+b.fdy*g.ch*1.35*e-Math.sin(e*3.14)*g.ch*0.12;
+        drawBird(b,fx,fy,u*(1-e*0.62),mixa(col,[255,226,180],0.5),(1-e*e)*0.95,b.frot);
+      }
+    }else{
+      var la=ease(b.land);
+      var yy=byp-(1-la)*g.ch*0.34;
+      drawBird(b,bxp,yy,u,col,0.30+0.70*la,(1-la)*1.6);
+    }
+  }
+
+  ctx.restore(); /* 结束窗内裁剪 */
+
+  /* ===== 窗棂与窗框 ===== */
+  var wood=woodC();
+  ctx.strokeStyle=rgba(mixa(wood,[0,0,0],0.35),0.9);
+  ctx.lineWidth=g.mb;
+  ctx.beginPath();
+  for(i=1;i<=2;i++){
+    var vx=g.ix+i*g.cw+(i-0.5)*g.mb;
+    ctx.moveTo(vx,g.iy); ctx.lineTo(vx,g.iy+g.ih);
+    var hy2=g.iy+i*g.ch+(i-0.5)*g.mb;
+    ctx.moveTo(g.ix,hy2); ctx.lineTo(g.ix+g.iw,hy2);
+  }
+  ctx.stroke();
+  /* 棂条上的一线高光 */
+  ctx.strokeStyle=rgba(mixa(wood,[255,226,180],0.55),0.30+S.warmth*0.24);
+  ctx.lineWidth=Math.max(0.7,g.mb*0.26);
+  ctx.beginPath();
+  for(i=1;i<=2;i++){
+    var vx2=g.ix+i*g.cw+(i-0.5)*g.mb-g.mb*0.26;
+    ctx.moveTo(vx2,g.iy); ctx.lineTo(vx2,g.iy+g.ih);
+    var hy3=g.iy+i*g.ch+(i-0.5)*g.mb-g.mb*0.26;
+    ctx.moveTo(g.ix,hy3); ctx.lineTo(g.ix+g.iw,hy3);
+  }
+  ctx.stroke();
+
+  /* 外框 */
+  ctx.strokeStyle=rgba(wood,0.95);
+  ctx.lineWidth=g.fr;
+  ctx.strokeRect(g.wx+g.fr/2,g.wy+g.fr/2,g.ww-g.fr,g.wh-g.fr);
+  ctx.strokeStyle=rgba(mixa(wood,[255,228,186],0.5),0.22+S.warmth*0.20);
+  ctx.lineWidth=Math.max(0.8,g.fr*0.14);
+  ctx.strokeRect(g.wx+g.fr*0.90,g.wy+g.fr*0.90,g.ww-g.fr*1.8,g.wh-g.fr*1.8);
+
+  /* 窗台 */
+  ctx.fillStyle=rgba(mixa(wood,[0,0,0],0.18),0.95);
+  var slw=g.ww+g.ww*0.075;
+  ctx.fillRect(g.wx-g.ww*0.0375,g.wy+g.wh,slw,g.ww*0.030);
+  ctx.fillStyle=rgba(mixa(wood,[255,226,182],0.45),0.20+S.warmth*0.20);
+  ctx.fillRect(g.wx-g.ww*0.0375,g.wy+g.wh,slw,Math.max(1,g.ww*0.007));
+
+  /* ===== 灯 ===== */
+  drawLamp(g,lampY);
+
+  /* ===== 粒子 ===== */
+  for(i=0;i<S.motes.length;i++){
+    var m=S.motes[i];
+    if(m.t<0) continue;
+    var mk=cl(m.t/m.life,0,1);
+    var ma=Math.sin(mk*3.14159)*0.9;
+    drawGlow(m.x,m.y,m.r*7,m.col,ma*0.32);
+    ctx.fillStyle=rgba(mixa(m.col,[255,246,226],0.4),ma*0.72);
+    ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,6.2832); ctx.fill();
+  }
+  for(i=0;i<S.sparks.length;i++){
+    var sp=S.sparks[i];
+    var sk=1-cl(sp.t/sp.life,0,1);
+    ctx.fillStyle=rgba(sp.col,sk*0.55);
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.r*sk,0,6.2832); ctx.fill();
+  }
+  for(i=0;i<S.rings.length;i++){
+    var rg=S.rings[i], rk=cl(rg.t/rg.life,0,1);
+    ctx.strokeStyle=rgba(rg.col,(1-rk)*0.30);
+    ctx.lineWidth=rg.wd*(1-rk*0.6);
+    ctx.beginPath();
+    ctx.arc(rg.x,rg.y,lerp(rg.r0,rg.r1,ease(rk)),0,6.2832);
+    ctx.stroke();
+  }
+
+  /* 按住时手边的呼吸圈 */
+  if(S.holding&&S.holdT>0.16){
+    var hb=0.5+0.5*Math.sin(S.t*1.5);
+    var hr2=(24+hb*16)*g.ls;
+    drawGlow(S.downX,S.downY,hr2*2.6,LAMPC,0.10+0.10*hb);
+    ctx.strokeStyle=rgba([255,214,160],0.16+0.10*hb);
+    ctx.lineWidth=1.1;
+    ctx.beginPath(); ctx.arc(S.downX,S.downY,hr2,0,6.2832); ctx.stroke();
+  }
+}
+
+/* ---------- 灯 ---------- */
+function drawLamp(g,lampY){
+  var s=g.ls, x=g.lx, y=g.ly;
+  var wood=mixa([58,52,60],[122,86,60],S.warmth);
+  /* 底座 */
+  ctx.fillStyle=rgba(wood,0.95);
+  ctx.beginPath();
+  ctx.ellipse(x,y,20*s,5.2*s,0,0,6.2832);
+  ctx.fill();
+  /* 灯杆 */
+  ctx.strokeStyle=rgba(wood,0.95);
+  ctx.lineWidth=3.0*s;
+  ctx.beginPath(); ctx.moveTo(x,y-2*s); ctx.lineTo(x,y-40*s); ctx.stroke();
+  /* 灯罩 */
+  var sh=mixa([74,70,86],[186,140,92],S.warmth);
+  ctx.fillStyle=rgba(sh,0.92);
+  ctx.beginPath();
+  ctx.moveTo(x-24*s,y-40*s);
+  ctx.lineTo(x-15*s,y-64*s);
+  ctx.lineTo(x+15*s,y-64*s);
+  ctx.lineTo(x+24*s,y-40*s);
+  ctx.closePath();
+  ctx.fill();
+  /* 罩下的光 */
+  var lg=ctx.createLinearGradient(x,y-40*s,x,y+4*s);
+  lg.addColorStop(0,rgba(LAMPC,0.30+S.lamp*0.34));
+  lg.addColorStop(1,rgba(LAMPC,0));
+  ctx.fillStyle=lg;
+  ctx.beginPath();
+  ctx.moveTo(x-23*s,y-40*s);
+  ctx.lineTo(x-40*s,y+4*s);
+  ctx.lineTo(x+40*s,y+4*s);
+  ctx.lineTo(x+23*s,y-40*s);
+  ctx.closePath();
+  ctx.fill();
+  /* 灯芯 */
+  drawGlow(x,y-44*s,44*s*(0.8+S.lamp*0.6),LAMPC,0.28+S.lamp*0.40);
+  ctx.fillStyle=rgba([255,238,206],0.55+S.lamp*0.40);
+  ctx.beginPath();
+  ctx.ellipse(x,y-43*s,7.5*s,5.2*s*(0.9+S.lamp*0.25),0,0,6.2832);
+  ctx.fill();
+  /* 罩沿高光 */
+  ctx.strokeStyle=rgba(mixa(sh,[255,232,196],0.6),0.35+S.warmth*0.25);
+  ctx.lineWidth=Math.max(0.8,1.1*s);
+  ctx.beginPath(); ctx.moveTo(x-24*s,y-40*s); ctx.lineTo(x+24*s,y-40*s); ctx.stroke();
+}
