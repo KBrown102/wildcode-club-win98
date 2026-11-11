@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="OxegDc5WnHaIwMJTkzaYZ1">
+<head data-page-node-id="zGuDAuCMEQhvNu3HNXksGX"><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" data-page-node-id="ZXI0anXKmLLhNBAdyorAH3">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" data-page-node-id="1VkeHAvil759e33LTFfD9j">
+<title>潮信 · 招潮</title>
+<style>
+  :root{
+    --ink:#2B2118; --mud:#6B5540; --sea:#2E5C8A; --foam:#EAF2F5;
+    --paper:#F2EAD9; --zhu:#C3423F; --dirt:#B5651D; --green:#9AAA7E; --gold:#C9A227;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:#14110D;overflow:hidden;
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink);-webkit-font-smoothing:antialiased;}
+  body{display:flex;align-items:center;justify-content:center;}
+  /* flex:0 0 auto 必须写：#stage 是 flex item，视口窄于 480 时会被 flex-shrink 压扁，
+     于是「布局宽变窄 + transform 又缩一次」= 双重缩放 */
+  #stage{position:relative;flex:0 0 auto;width:480px;height:800px;transform-origin:center center;
+    border-radius:10px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.55);}
+  #cv{display:block;width:480px;height:800px;}
+
+  /* ---------- HUD：题款式，无面板 ---------- */
+  .hud{position:absolute;left:0;right:0;pointer-events:none;z-index:5;}
+  #top{top:0;height:58px;display:flex;align-items:flex-start;justify-content:space-between;
+    padding:12px 16px 0;font-size:13px;letter-spacing:.14em;
+    color:#3A2E22;text-shadow:0 1px 2px rgba(255,250,238,.75);}
+  #top .mid{font-variant-numeric:tabular-nums;opacity:.8}
+  #top .r{text-align:right;font-variant-numeric:tabular-nums}
+  #top b{font-weight:600;font-size:16px;letter-spacing:.06em}
+
+  /* 右侧潮位标尺 */
+  #gauge{position:absolute;right:14px;top:96px;width:20px;height:250px;z-index:5;pointer-events:none;}
+  #gauge .trk{position:absolute;left:8px;top:0;width:4px;height:100%;border-radius:2px;
+    background:linear-gradient(to bottom,rgba(46,92,138,.55),rgba(46,92,138,.16));}
+  #gauge .fill{position:absolute;left:8px;width:4px;border-radius:2px;background:rgba(46,92,138,.85);
+    bottom:0;transition:none;}
+  #gauge .knob{position:absolute;left:-3px;width:26px;height:8px;margin-top:-4px;border-radius:2px;
+    background:var(--foam);box-shadow:0 1px 4px rgba(20,40,60,.45);}
+  #gauge .lbl{position:absolute;right:26px;top:-16px;font-size:10px;letter-spacing:.2em;
+    color:#3A2E22;opacity:.7;text-shadow:0 1px 2px rgba(255,250,238,.8);white-space:nowrap}
+  #gauge .arr{position:absolute;left:2px;width:16px;text-align:center;font-size:10px;color:#2E5C8A;opacity:0}
+  #gauge .arr.up{top:-14px} #gauge .arr.dn{bottom:-14px}
+  #gauge .arr.on{opacity:1}
+
+  /* 底部条 */
+  #bot{position:absolute;left:0;right:0;bottom:0;height:74px;z-index:5;pointer-events:none;
+    display:flex;align-items:center;justify-content:space-between;padding:0 16px 14px;}
+  .oyst{display:flex;align-items:center;gap:5px;font-size:11px;letter-spacing:.12em;color:#3A2E22;
+    text-shadow:0 1px 2px rgba(255,250,238,.8)}
+  .dot{width:9px;height:9px;border-radius:50%;background:rgba(58,44,30,.18);
+    box-shadow:inset 0 0 0 1px rgba(58,44,30,.35)}
+  .dot.on{background:#7FA8B8;box-shadow:inset 0 0 0 1px rgba(46,92,138,.6)}
+  .btns{display:flex;gap:8px;pointer-events:auto}
+  .btn{font:inherit;font-size:12px;letter-spacing:.14em;padding:7px 13px;border-radius:999px;
+    border:1px solid rgba(58,44,30,.28);background:rgba(250,246,236,.72);color:#3A2E22;cursor:pointer;
+    backdrop-filter:blur(4px);transition:transform .12s,background .12s;white-space:nowrap}
+  .btn:active{transform:scale(.94)}
+  .btn.primary{background:rgba(201,162,39,.9);border-color:rgba(140,110,20,.6);color:#2B2118;font-weight:600}
+  .btn[disabled]{opacity:.42;cursor:default}
+
+  /* 中上提示行 */
+  #tip{position:absolute;left:0;right:0;top:62px;text-align:center;font-size:12px;letter-spacing:.18em;
+    color:#3A2E22;opacity:0;transition:opacity .35s;text-shadow:0 1px 3px rgba(255,250,238,.9);z-index:5;pointer-events:none}
+  #tip.on{opacity:.92}
+
+  /* ---------- 遮罩 ---------- */
+  .ov{position:absolute;left:0;right:0;top:0;bottom:0;z-index:20;display:none;
+    background:rgba(28,24,18,.55);backdrop-filter:blur(7px);
+    align-items:center;justify-content:center;padding:22px;}
+  .ov.on{display:flex}
+  .card{width:100%;max-width:400px;max-height:756px;overflow:auto;background:var(--paper);
+    border-radius:12px;padding:24px 22px;box-shadow:0 10px 40px rgba(0,0,0,.4);
+    border:1px solid rgba(120,100,74,.22)}
+  .card h1{margin:0 0 4px;font-size:25px;letter-spacing:.30em;font-weight:600;color:#2B2118}
+  .card .sub{font-size:11.5px;letter-spacing:.22em;color:#7A6A52;margin-bottom:16px}
+  .card p{font-size:13px;line-height:1.85;color:#4A3E2E;margin:0 0 10px;letter-spacing:.03em}
+  .card p.k{color:#7A6A52;font-size:12px;line-height:1.8}
+  .card em{font-style:normal;color:var(--zhu);font-weight:600}
+  .card .hd{font-size:11px;letter-spacing:.24em;color:#7A6A52;margin:16px 0 8px}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .lv{position:relative;border:1px solid rgba(120,100,74,.3);border-radius:8px;padding:11px 6px 9px;
+    text-align:center;cursor:pointer;background:rgba(255,252,244,.6);transition:transform .12s,background .12s}
+  .lv:active{transform:scale(.95)}
+  .lv .n{font-size:11px;letter-spacing:.18em;color:#7A6A52}
+  .lv .g{font-size:15px;font-weight:600;color:#2B2118;margin-top:3px;font-variant-numeric:tabular-nums}
+  .lv .st{font-size:11px;color:var(--gold);letter-spacing:.1em;height:14px;margin-top:2px}
+  .lv.lock{opacity:.42;cursor:default;background:rgba(200,192,178,.3)}
+  .lv.lock .g{color:#8A7C64}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;margin:14px 0 4px}
+  .st2{display:flex;justify-content:space-between;font-size:12.5px;color:#5A4C38;
+    border-bottom:1px dashed rgba(120,100,74,.28);padding-bottom:4px;letter-spacing:.05em}
+  .st2 b{font-weight:600;color:#2B2118;font-variant-numeric:tabular-nums}
+  .stars{text-align:center;font-size:30px;letter-spacing:.22em;color:var(--gold);margin:14px 0 6px;height:38px}
+  .stars .off{color:rgba(120,100,74,.24)}
+  .verse{text-align:center;font-size:12.5px;line-height:2;color:#6B5C44;letter-spacing:.10em;margin:8px 0 16px}
+  .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+
+  /* 静音：#stage 直属，放在遮罩之后 */
+  #mute{position:absolute;right:14px;top:14px;z-index:40;width:32px;height:32px;border-radius:50%;
+    border:1px solid rgba(58,44,30,.25);background:rgba(250,246,236,.78);cursor:pointer;
+    font-size:14px;line-height:30px;text-align:center;color:#3A2E22;padding:0;backdrop-filter:blur(4px)}
+  #mute:active{transform:scale(.92)}
+
+  @media (max-width:520px){ .card{padding:20px 16px} .card h1{font-size:22px} }
+</style>
+</head>
+<body data-page-node-id="qAsfvfx0Cw5MQpcK1H7FkO">
+<div id="stage" data-page-node-id="GN14o0a2S9dykz7bDfhBnO">
+  <canvas id="cv" data-page-node-id="cqIb6uCDVu3yAiS6HWNMWS"></canvas>
+
+  <div id="gauge" data-page-node-id="lov1WNLs4gkXOjDtlkP8hq">
+    <div class="lbl" data-page-node-id="2rxO46i5lrDjAyzjlqSyIL">潮 位</div>
+    <div class="trk" data-page-node-id="e2uHEw1zS5SqNGii7i8RrG"></div>
+    <div class="fill" id="gFill" data-page-node-id="BiPUIUFSY7HNi7oHj8gqsQ"></div>
+    <div class="knob" id="gKnob" data-page-node-id="0vbVeGJj9I3krRdy7jblXV"></div>
+    <div class="arr up" id="gUp" data-page-node-id="YnJ4IX6z43h2wAR5XwXbPx">▲</div>
+    <div class="arr dn" id="gDn" data-page-node-id="39AmBU6sTVmKkTlwpuDCKs">▼</div>
+  </div>
+
+  <div class="hud" id="top" data-page-node-id="VTiCdLiuSnOUJRZOETnfjc">
+    <div class="l" id="hLeft" data-page-node-id="2LdN6YsdsalKd6pWVhjOkY">第 一 潮</div>
+    <div class="mid" id="hMid" data-page-node-id="nOGGLIQWL6o0K3DZjSMovz">60″</div>
+    <div class="r" id="hRight" data-page-node-id="hGVL53SOT36CorFpColVZN">生机 <b data-page-node-id="PqJeSlCrrIZnRDx8casa87">16</b> / 24</div>
+  </div>
+  <div id="tip" data-page-node-id="eluLWmwAWEWHODTHMwgey8"></div>
+
+  <div id="bot" data-page-node-id="y32x9DHExYtIADMBguNluu">
+    <div class="oyst" data-page-node-id="hzIMoNLY4Erz3CCayWY1Uj"><span id="oyDots" data-page-node-id="e27M71hOzM2csXgmCKocQf"></span><span id="oyTxt" data-page-node-id="3DwxaCir04F8zu276GtF5L">蚝囤 0 / 5</span></div>
+    <div class="btns" data-page-node-id="Gx3ztIh4evPstam5fnHONy">
+      <button class="btn" id="bGong" disabled data-page-node-id="8hzaMnB2cA9KUDiG2maigk">鸣锣</button>
+      <button class="btn" id="bAgain" data-page-node-id="VpUUmCkmDWhBXV5tCRQvBn">重来</button>
+      <button class="btn" id="bMenu" data-page-node-id="lvQjVyBFvapxxrX738gHRa">选关</button>
+    </div>
+  </div>
+
+  <div class="ov on" id="ovStart" data-page-node-id="CYjFyIsMPrjtDI0V6s7GM0">
+    <div class="card" data-page-node-id="k3QxSqKg9mHkGbjT71tepW">
+      <h1 data-page-node-id="H8sFyph0Ok2XP1rdov9eUW">潮信 · 招潮</h1>
+      <div class="sub" data-page-node-id="mzvR9iCSCdEMaDVvMd8FZL">T I D E C A L L</div>
+      <p data-page-node-id="KkKDRc31AxvY0M4jRFHNh7">你不是赶海的人。你是<em data-page-node-id="FIKQptWY5CK4BEDBooge7o">潮水</em>。</p>
+      <p data-page-node-id="VSdSrIJPQDlV57q2IYVBRp">滩涂上住着一群招潮蟹。它们饿了会自己下滩滤食，吃饱了自己回洞 —— 你抓不住它们，也指挥不了它们。你唯一能动的，是<em data-page-node-id="6yW8HGWr25NkE2ZeGjxhkO">水位</em>。</p>
+      <p class="k" data-page-node-id="LBnAMJPZWemIFLGHSqkdQw">· 泥越深越肥，但要退潮才露得出来<br data-page-node-id="R9nOVJx6e6yysWvACCDiWB">
+         · 蟹只肯在<em data-page-node-id="Hnm0wqMsgMvHQ4claCPdDS">贴着水线、刚露出</em>的那条泥带上吃<br data-page-node-id="0SEVk3DLDOpnllTfh386Mv">
+         · 鸟专叼<em data-page-node-id="tnqC5oBE20xHo4naAuG6y9">已露出且最贴水线</em>的那只 —— <em data-page-node-id="urT2XdhbwpCYrsOmnnyEo2">把它淹进水里，鸟就扑空</em><br data-page-node-id="YgqDednVekhEBi3mb4wQsQ">
+         · 涨过头，蟹会被淹死；退太久，泥会被啃薄<br data-page-node-id="kEoEEDwxk89r55BFliaIKY">
+         · 退潮翻出文蛤，涨潮才冲得进蚝囤；五个蚝换一记鸣锣</p>
+      <div class="hd" data-page-node-id="TdhNcs6KhtfA86wPolfk4i">操 作</div>
+      <p class="k" data-page-node-id="WBpx6eCna4fXXVe9Y73Iir">桌　面：<b data-page-node-id="KwKSBwBlxK7NnfGJzUECVY">W / ↑</b>（或 <b data-page-node-id="BjdQEjAp4H9AIIQ8BmxgE6">D / →</b>）涨潮　<b data-page-node-id="X8gH5WMNG6YwcFX9b33MWp">S / ↓</b>（或 <b data-page-node-id="6T8YnOwAapqbvtrArvsJmF">A / ←</b>）退潮　<b data-page-node-id="Anb76YjCHEiz4jFKU6JWbi">空格</b> 鸣锣　<b data-page-node-id="2LZCkzBI6R1t2N2MGiXMJq">R</b> 重来　<b data-page-node-id="9pCfVspofQ9fWZSkks49wW">Esc</b> 选关　<b data-page-node-id="tgHEBpReyzdEVCkRfEAc6G">1–5</b> 跳关<br data-page-node-id="u7yXWDDHm9ZLWg8yFENma2">移动端：在滩涂上<em data-page-node-id="vUUTkZGmGtQfDkDadkO0Uz">上下拖动</em>即可推拉潮位</p>
+      <div class="hd" data-page-node-id="753FNFnU7pMwzHkBRDxhx6">第 一 潮 起</div>
+      <div class="grid" id="lvGrid" data-page-node-id="KVmvDbZCY4HKvMh06MfuZl"></div>
+    </div>
+  </div>
+
+  <div class="ov" id="ovOver" data-page-node-id="uPFCvNGwDTC9RdYOECGEdC">
+    <div class="card" data-page-node-id="YxbLR3ejcjBLFwAztbCFar">
+      <h1 id="ovTitle" data-page-node-id="GrpFlKJUJkavbG1zt8H5wc">潮 落</h1>
+      <div class="sub" id="ovSub" data-page-node-id="ZCIB2B16n0wgxG7BifItc5">第 一 潮 · 结算</div>
+      <div class="stars" id="ovStars" data-page-node-id="dgDTxofGml21u43auF6bRR"></div>
+      <div class="stats" id="ovStats" data-page-node-id="F2n9ERiyLp3qtNCJJoZjRv"></div>
+      <div class="verse" id="ovVerse" data-page-node-id="pf5A8G31H89EyKsU6zY60X"></div>
+      <div class="row" data-page-node-id="wB4MiMslQ0EYfIln5MzDhj">
+        <button class="btn primary" id="ovNext" data-page-node-id="xcfj3DV4EiAz60DBx4U0mq">下一潮</button>
+        <button class="btn" id="ovRetry" data-page-node-id="mlcgLc8x1ICSmHHwU5S2rW">再来一次</button>
+        <button class="btn" id="ovMenu" data-page-node-id="PC9bBxpMk1FIfIa5US0GHK">选关</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="mute" title="静音" data-page-node-id="tVba5aaF2RbPg1NA5wOpcQ">♪</button>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.Tidecall, TR = window.TideRender;
+  var W = TR.W, H = TR.H;
+  var NUM = ['一', '二', '三', '四', '五', '六', '七', '八'];
+
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d', { alpha: false });
+  var stage = document.getElementById('stage');
+  var R = new TR.R();
+  var st = null, level = 0, running = false, last = 0, rafId = 0;
+
+  // ---------- 存档 ----------
+  var KEY = 'tidecall288';
+  var save = { best: [], unlocked: 1, mute: false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') { save.best = o.best || []; save.unlocked = o.unlocked || 1; save.mute = !!o.mute; } }
+  } catch (e) { }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { } }
+
+  // ---------- 音效：五声音阶 ----------
+  var AC = null, master = null;
+  function audio() {
+    if (AC) return AC;
+    try {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      AC = new C(); master = AC.createGain(); master.gain.value = 0.30; master.connect(AC.destination);
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  var PENT = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+  function tone(f, dur, type, vol, detune) {
+    if (save.mute) return;
+    var a = audio(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    if (detune) o.detune.value = detune;
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime((vol || 0.2), a.currentTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0008, a.currentTime + dur);
+    o.connect(g); g.connect(master); o.start(); o.stop(a.currentTime + dur + 0.05);
+  }
+  function sweep(f0, f1, dur, vol) {
+    if (save.mute) return;
+    var a = audio(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), a.currentTime + dur);
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(vol || 0.14, a.currentTime + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0008, a.currentTime + dur);
+    o.connect(g); g.connect(master); o.start(); o.stop(a.currentTime + dur + 0.05);
+  }
+  var noiseBuf = null;
+  function noise(dur, freq, q, vol, sweepTo) {
+    if (save.mute) return;
+    var a = audio(); if (!a) return;
+    if (!noiseBuf) {
+      noiseBuf = a.createBuffer(1, a.sampleRate * 1.2, a.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    var s = a.createBufferSource(); s.buffer = noiseBuf;
+    var bp = a.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(freq, a.currentTime);
+    if (sweepTo) bp.frequency.exponentialRampToValueAtTime(Math.max(60, sweepTo), a.currentTime + dur);
+    bp.Q.value = q || 1.2;
+    var g = a.createGain();
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(vol || 0.16, a.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0008, a.currentTime + dur);
+    s.connect(bp); bp.connect(g); g.connect(master); s.start(); s.stop(a.currentTime + dur + 0.05);
+  }
+  var SFX = {
+    bite: function () { tone(PENT[6], 0.10, 'triangle', 0.055); },
+    molt: function () { [0, 2, 4].forEach(function (k, i) { setTimeout(function () { tone(PENT[k + 2], 0.34, 'sine', 0.16); }, i * 78); }); },
+    clam: function () { tone(PENT[8], 0.16, 'sine', 0.13); setTimeout(function () { tone(PENT[9], 0.22, 'sine', 0.10); }, 62); },
+    wash: function () { noise(0.5, 900, 0.7, 0.15, 180); sweep(300, 90, 0.42, 0.10); },
+    eaten: function () { noise(0.22, 420, 1.6, 0.17); tone(110, 0.30, 'sine', 0.14); },
+    scared: function () { sweep(880, 420, 0.20, 0.10); noise(0.16, 2600, 3, 0.06); },
+    birdIn: function () { noise(0.20, 1500, 2.6, 0.09, 900); },
+    gong: function () {
+      [196, 261.6, 293.7, 392].forEach(function (f, i) { tone(f, 2.4, 'sine', 0.13, i * 7 - 9); });
+      noise(1.6, 1400, 0.7, 0.12, 260);
+    },
+    up: function () { sweep(150, 210, 0.42, 0.055); },
+    down: function () { sweep(210, 150, 0.42, 0.055); },
+    over: function () { [4, 2, 0].forEach(function (k, i) { setTimeout(function () { tone(PENT[k], 0.7, 'sine', 0.14); }, i * 190); }); },
+    win: function () { [0, 2, 4, 5].forEach(function (k, i) { setTimeout(function () { tone(PENT[k + 2], 0.6, 'sine', 0.15); }, i * 145); }); }
+  };
+  var sfxTide = 0;
+
+  // ---------- 尺寸 ----------
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var k = Math.min(vw / W, vh / H);
+    stage.style.transform = 'scale(' + k + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var eff = Math.min(dpr * k, 3);
+    var bw = Math.round(W * eff), bh = Math.round(H * eff);
+    if (cv.width !== bw || cv.height !== bh) {
+      cv.width = bw; cv.height = bh;
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    }
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 220); });
+
+  // ---------- HUD ----------
+  var elLeft = document.getElementById('hLeft'), elMid = document.getElementById('hMid'),
+    elRight = document.getElementById('hRight'), elFill = document.getElementById('gFill'),
+    elKnob = document.getElementById('gKnob'), elUp = document.getElementById('gUp'),
+    elDn = document.getElementById('gDn'), elDots = document.getElementById('oyDots'),
+    elOy = document.getElementById('oyTxt'), elGong = document.getElementById('bGong'),
+    elTip = document.getElementById('tip');
+
+  var tipT = 0;
+  function tip(s, dur) { elTip.textContent = s; elTip.classList.add('on'); tipT = dur || 2.6; }
+
+  // 只在值变了才写 DOM —— 每帧 innerHTML 在移动端是白白掉帧
+  var _c = {};
+  function setTxt(el, v) { if (_c[el.id] !== v) { _c[el.id] = v; el.textContent = v; } }
+  function setHTML(el, v) { if (_c[el.id] !== v) { _c[el.id] = v; el.innerHTML = v; } }
+
+  function hud(dt) {
+    if (!st) return;
+    setTxt(elLeft, '第 ' + NUM[st.level] + ' 潮');
+    setTxt(elMid, Math.max(0, Math.ceil(st.timeLeft)) + '″');
+    setHTML(elRight, '生机 <b>' + G.vitality(st) + '</b> / ' + st.goal);
+
+    var pct = Math.max(0, Math.min(1, st.tide));
+    elFill.style.height = (pct * 100) + '%';
+    elKnob.style.top = ((1 - pct) * 100) + '%';
+    elUp.classList.toggle('on', st.tideUpHeld === true);
+    elDn.classList.toggle('on', st.tideDnHeld === true);
+
+    var n = st.oyster, need = G.GONG_COST;
+    var full = Math.min(n, need);
+    if (_c.oy !== full) {
+      _c.oy = full;
+      var d = '';
+      for (var i = 0; i < need; i++) d += '<span class="dot' + (i < full ? ' on' : '') + '"></span>';
+      elDots.innerHTML = d;
+      elOy.textContent = n >= need ? '可鸣锣（空格）' : ('蚝囤 ' + n + ' / ' + need);
+    }
+    var dis = n < need || st.over;
+    if (elGong.disabled !== dis) elGong.disabled = dis;
+
+    if (tipT > 0) { tipT -= dt; if (tipT <= 0) elTip.classList.remove('on'); }
+  }
+
+  // ---------- 输入 ----------
+  var keys = {};
+  function keyOf(e) { return (e.code || '') + '|' + (e.key || ''); }
+  var UP = ['KeyW|w', 'KeyW|W', 'ArrowUp|ArrowUp'], DN = ['KeyS|s', 'KeyS|S', 'ArrowDown|ArrowDown'];
+  var LT = ['KeyA|a', 'KeyA|A', 'ArrowLeft|ArrowLeft'], RT = ['KeyD|d', 'KeyD|D', 'ArrowRight|ArrowRight'];
+  function hit(list, k) { for (var i = 0; i < list.length; i++) if (k.indexOf(list[i]) >= 0) return true; return false; }
+
+  window.addEventListener('keydown', function (e) {
+    var k = keyOf(e);
+    // 方向控制纪律：A/D ≡ ←/→，W/S ≡ ↑/↓；本作只有一根轴，四键全部映射为「退 / 涨」
+    if (hit(UP, k) || hit(RT, k)) { keys.up = true; e.preventDefault(); }
+    if (hit(DN, k) || hit(LT, k)) { keys.dn = true; e.preventDefault(); }
+    if (e.code === 'Space') { e.preventDefault(); doGong(); }
+    if (k.indexOf('KeyR') === 0 || k.indexOf('r|') >= 0) start(level);
+    if (e.code === 'Escape') openMenu();
+    if (k.indexOf('Digit') === 0) {
+      var n = parseInt(e.code.slice(5), 10);
+      if (n >= 1 && n <= G.LEVELS.length) start(n - 1);
+    }
+  });
+  window.addEventListener('keyup', function (e) {
+    var k = keyOf(e);
+    if (hit(UP, k) || hit(RT, k)) keys.up = false;
+    if (hit(DN, k) || hit(LT, k)) keys.dn = false;
+  });
+  window.addEventListener('blur', function () { keys.up = keys.dn = false; });
+
+  // 触摸 / 鼠标拖动：直接抓着水线上下推
+  var drag = null;
+  function pos(e) {
+    var r = cv.getBoundingClientRect();
+    var p = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return { y: (p.clientY - r.top) / r.height * H };
+  }
+  function onDown(e) {
+    if (!st || st.over || !running) return;
+    drag = { y0: pos(e).y, t0: st.tide };
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!drag || !st) return;
+    var y = pos(e).y;
+    st.tide = Math.max(0, Math.min(1, drag.t0 + (drag.y0 - y) / H * 1.9));
+    st.waterE = -0.04 + st.tide * 1.08;
+    e.preventDefault();
+  }
+  function onUp() { drag = null; }
+  cv.addEventListener('touchstart', onDown, { passive: false });
+  cv.addEventListener('touchmove', onMove, { passive: false });
+  cv.addEventListener('touchend', onUp);
+  cv.addEventListener('touchcancel', onUp);
+  cv.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', function (e) { if (drag) onMove(e); });
+  window.addEventListener('mouseup', onUp);
+
+  function doGong() {
+    if (!st || st.over || !running) return;
+    if (G.gong(st)) { SFX.gong(); tip('锣响，鸟惊散六息'); }
+  }
+
+  // ---------- 选关 ----------
+  var ovStart = document.getElementById('ovStart'), ovOver = document.getElementById('ovOver'),
+    lvGrid = document.getElementById('lvGrid');
+  function buildGrid() {
+    var h = '';
+    for (var i = 0; i < G.LEVELS.length; i++) {
+      var L = G.LEVELS[i], b = save.best[i] || 0;
+      var star = b >= L.goal * G.STAR3 ? 3 : (b >= L.goal * G.STAR2 ? 2 : (b >= L.goal ? 1 : 0));
+      var lock = i >= save.unlocked;
+      var sTxt = '';
+      for (var k = 0; k < 3; k++) sTxt += k < star ? '★' : '☆';
+      h += '<div class="lv' + (lock ? ' lock' : '') + '" data-i="' + i + '">' +
+        '<div class="n">第 ' + NUM[i] + ' 潮</div>' +
+        '<div class="g">' + (lock ? '—' : (b ? b : '目标 ' + L.goal)) + '</div>' +
+        '<div class="st">' + (lock ? '未至' : sTxt) + '</div></div>';
+    }
+    lvGrid.innerHTML = h;
+    var cells = lvGrid.querySelectorAll('.lv');
+    for (var j = 0; j < cells.length; j++) {
+      cells[j].addEventListener('click', function () {
+        var i = parseInt(this.getAttribute('data-i'), 10);
+        if (i >= save.unlocked) return;
+        start(i);
+      });
+    }
+  }
+  function openMenu() { running = false; buildGrid(); ovOver.classList.remove('on'); ovStart.classList.add('on'); }
+
+  // ---------- 开一局 ----------
+  function start(lv) {
+    level = lv;
+    st = G.create(lv, (Date.now() % 100000) + lv * 7919);
+    R.parts.length = 0; R.texts.length = 0; R.foam.length = 0;
+    R.pristine = null; R.world = null; R.bakeTick = 0;
+    ovStart.classList.remove('on'); ovOver.classList.remove('on');
+    running = true; last = 0;
+    tip(st.level === 0 ? '退潮，把深泥露出来给蟹开饭' : '第 ' + NUM[lv] + ' 潮 · 目标生机 ' + st.goal, 3.4);
+  }
+
+  // ---------- 结算 ----------
+  var VERSES = [
+    ['潮水不认识谁，它只是准时。', '活下来的，都是顺着它呼吸的。'],
+    ['你一寸一寸地退，它们就一寸一寸地来。', '你一尺一尺地涨，它们就一尺一尺地回。'],
+    ['招潮的螯举了很久。', '它等的不是你，是那道水线。'],
+    ['泥记得每一口被啃薄的地方，', '也记得每一次淤回来的潮。']
+  ];
+  function finish() {
+    running = false;
+    var r = st.result;
+    var ok = r.star >= 1;
+    document.getElementById('ovTitle').textContent = ok ? '潮 平' : '潮 落';
+    document.getElementById('ovSub').textContent = '第 ' + NUM[r.level] + ' 潮 · ' +
+      (ok ? '生机达标' : '生机未达 ' + r.goal);
+    var sh = '';
+    for (var k = 0; k < 3; k++) sh += k < r.star ? '★' : '<span class="off">☆</span>';
+    document.getElementById('ovStars').innerHTML = sh;
+    document.getElementById('ovStats').innerHTML = [
+      ['生机', r.vitality + ' / ' + r.goal], ['蟹　群', r.alive + ' 只'],
+      ['平均体型', r.avgSize.toFixed(1)], ['蜕　壳', r.molt + ' 次'],
+      ['文　蛤', r.clam + ' 枚'], ['惊　退', r.scared + ' 次'],
+      ['冲　走', r.washed + ' 只'], ['被　叼', r.eaten + ' 只']
+    ].map(function (x) { return '<div class="st2"><span>' + x[0] + '</span><b>' + x[1] + '</b></div>'; }).join('');
+    var v = VERSES[(r.level + (ok ? 0 : 2)) % VERSES.length];
+    document.getElementById('ovVerse').innerHTML = v[0] + '<br>' + v[1];
+    document.getElementById('ovNext').style.display = (r.level < G.LEVELS.length - 1) ? '' : 'none';
+
+    if (r.vitality > (save.best[r.level] || 0)) save.best[r.level] = r.vitality;
+    if (ok && r.level + 1 > save.unlocked - 1) save.unlocked = Math.max(save.unlocked, r.level + 2);
+    if (save.unlocked > G.LEVELS.length) save.unlocked = G.LEVELS.length;
+    persist();
+    (ok ? SFX.win : SFX.over)();
+    ovOver.classList.add('on');
+  }
+
+  document.getElementById('ovNext').addEventListener('click', function () { start(Math.min(G.LEVELS.length - 1, level + 1)); });
+  document.getElementById('ovRetry').addEventListener('click', function () { start(level); });
+  document.getElementById('ovMenu').addEventListener('click', openMenu);
+  document.getElementById('bAgain').addEventListener('click', function () { start(level); });
+  document.getElementById('bMenu').addEventListener('click', openMenu);
+  elGong.addEventListener('click', doGong);
+
+  var muteBtn = document.getElementById('mute');
+  function paintMute() { muteBtn.textContent = save.mute ? '✕' : '♪'; muteBtn.style.opacity = save.mute ? .55 : 1; }
+  muteBtn.addEventListener('click', function (e) {
+    e.stopPropagation(); save.mute = !save.mute; persist(); paintMute();
+    if (!save.mute) { audio(); tone(PENT[4], 0.2, 'sine', 0.12); }
+  });
+  paintMute();
+
+  // ---------- 主循环 ----------
+  function frame(ts) {
+    rafId = requestAnimationFrame(frame);
+    if (!last) last = ts;
+    var dt = (ts - last) / 1000; last = ts;
+    if (!(dt > 0)) dt = 0;
+    if (dt > 0.05) dt = 0.05;
+
+    if (st) {
+      if (running) {
+        // ① update 产出事件 → ② 读事件播音效 → ③ 渲染（渲染层清空事件）
+        var before = st.tide;
+        st.inUp = !!keys.up; st.inDown = !!keys.dn;
+        st.tideUpHeld = !!keys.up; st.tideDnHeld = !!keys.dn;
+        G.update(st, dt);
+
+        sfxTide -= dt;
+        if (Math.abs(st.tide - before) > 0.0004 && sfxTide <= 0) {
+          sfxTide = 0.55;
+          if (st.tide > before) SFX.up(); else SFX.down();
+        }
+        for (var i = 0; i < st.events.length; i++) {
+          var fn = SFX[st.events[i].t];
+          if (fn && st.events[i].t !== 'bubble') fn();
+        }
+        if (st.over) { R.consume(st); finish(); }
+      }
+      R.consume(st);
+      R.draw(ctx, st, dt);
+      if (st) hud(dt);
+    } else {
+      ctx.fillStyle = '#B9A98C'; ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { keys.up = keys.dn = false; }
+    last = 0;
+  });
+
+  fit();
+  buildGrid();
+  st = G.create(0, 20260906);   // 遮罩背后先跑一个静态滩涂当背景
+  rafId = requestAnimationFrame(frame);
+
+  window.__game = {
+    get st() { return st; }, get R() { return R; }, get running() { return running; },
+    G: G, start: start, fit: fit, keys: keys,
+    setTide: function (v) { if (st) { st.tide = Math.max(0, Math.min(1, v)); st.waterE = -0.04 + st.tide * 1.08; } },
+    press: function (k, on) { keys[k] = !!on; },
+    gong: doGong, level: function () { return level; },
+    save: save, W: W, H: H
+  };
+})();
+</script>
+</body>
+</html>
