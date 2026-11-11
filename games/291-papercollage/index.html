@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="8W8SpvGEhFX35AwhHWFY5P">
+<head data-page-node-id="QGJxswimOCblIMwDsCNg4h"><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" data-page-node-id="BnwSik1PgWhEaGBqlLZCUr">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" data-page-node-id="zG2OXyFpvwbOEgeWXXDXR7">
+<meta name="theme-color" content="#F5EFE3" data-page-node-id="mw6OoPonET8qAuhBM0eRHT">
+<title>拼贴 · 撕纸局</title>
+<style>
+  :root{
+    --paper:#F5EFE3; --ink:#4A4034; --ink2:#8B7B62; --line:rgba(120,95,60,.22);
+    --l1:#E2B95C; --l2:#D08B45; --l3:#C85A3C; --l4:#A63E58; --l5:#6E4670; --l6:#3E5C8A; --l7:#34353F;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:#E7DFD0;overflow:hidden;
+    font-family:"Songti SC","SimSun","STSong","Noto Serif SC",serif;color:var(--ink)}
+  body{display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;width:480px;height:800px;flex:0 0 auto;transform-origin:center center;
+    background:var(--paper);overflow:hidden;box-shadow:0 18px 60px rgba(70,55,35,.28);border-radius:6px}
+  #cv{position:absolute;left:0;top:0;width:480px;height:800px;display:block}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;left:0;top:0;width:480px;height:800px;pointer-events:none}
+  .top{position:absolute;left:0;top:0;width:480px;height:150px;padding:18px 26px 0;
+    display:flex;justify-content:space-between;align-items:flex-start}
+  .brand{font-size:23px;font-weight:700;letter-spacing:2px}
+  .sub{margin-top:6px;font-size:12px;color:var(--ink2);letter-spacing:1px;line-height:1.7}
+  .scbox{text-align:right}
+  .score{font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .best{margin-top:7px;font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+  .rule{position:absolute;left:26px;right:26px;top:132px;height:1px;background:var(--line)}
+
+  /* 底部面板 */
+  .bot{position:absolute;left:0;bottom:0;width:480px;height:180px;padding:0 26px 22px}
+  .cap{font-size:12px;color:var(--ink2);letter-spacing:2px;margin-bottom:9px}
+  .dex{display:flex;gap:7px;margin-bottom:16px}
+  .dx{width:40px;height:40px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+    font-size:17px;color:rgba(80,60,30,.72);background:#E6DCC8;opacity:.42;
+    border:1px solid rgba(120,95,60,.22)}
+  .dx.on{opacity:1;box-shadow:0 2px 5px rgba(92,70,40,.22)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .slot{display:flex;align-items:center;gap:8px}
+  .lbl{font-size:12px;color:var(--ink2);letter-spacing:1px}
+  .chip{width:34px;height:34px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:rgba(255,250,240,.92);background:transparent;
+    border:1px dashed rgba(120,95,60,.4)}
+  .chip.empty{color:rgba(120,95,60,.35)}
+  .dots{display:flex;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#C3B393}
+  .dot.used{background:transparent;border:1px solid rgba(120,95,60,.45)}
+  .btns{display:flex;gap:8px;pointer-events:auto}
+  .btn{pointer-events:auto;font-family:inherit;font-size:13px;color:var(--ink);cursor:pointer;
+    background:#EDE2CF;border:1px solid rgba(120,95,60,.3);border-radius:4px;padding:8px 12px;letter-spacing:1px}
+  .btn:active{transform:translateY(1px)}
+  .hint{margin-top:12px;font-size:11.5px;color:var(--ink2);letter-spacing:.6px;line-height:1.6;text-align:center}
+
+  /* ---------- 遮罩 ---------- */
+  .ov{position:absolute;left:0;top:0;width:480px;height:800px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:rgba(245,239,227,.94);
+    backdrop-filter:blur(2px);z-index:20;padding:0 40px;text-align:center}
+  .ov.hide{display:none}
+  .ov h1{font-size:34px;margin:0 0 6px;letter-spacing:5px;font-weight:700}
+  .ov h2{font-size:26px;margin:0 0 14px;letter-spacing:3px;font-weight:700}
+  .ov .lead{font-size:13px;color:var(--ink2);letter-spacing:2px;margin-bottom:26px}
+  .ov p{font-size:13.5px;line-height:2.05;color:var(--ink);margin:0;text-align:left;letter-spacing:.5px}
+  .ov .box{background:#EDE2CF;border:1px solid rgba(120,95,60,.26);border-radius:6px;
+    padding:16px 20px;margin-bottom:22px;text-align:left}
+  .ov .big{font-size:52px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .ov .stat{display:flex;gap:26px;margin:16px 0 8px;font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+  .ov .stat b{display:block;font-size:19px;color:var(--ink);font-weight:700;margin-top:3px}
+  #thumb{width:208px;height:234px;border-radius:4px;background:#EDE2CF;
+    border:1px solid rgba(120,95,60,.26);margin:4px 0 16px}
+  .ov .go{pointer-events:auto;font-family:inherit;font-size:15px;letter-spacing:3px;cursor:pointer;
+    background:var(--l7);color:#F7F1E4;border:none;border-radius:4px;padding:13px 40px;margin-top:8px}
+  .ov .go:active{transform:translateY(1px)}
+  .ov .tail{margin-top:20px;font-size:12.5px;color:var(--ink2);letter-spacing:1.2px;line-height:1.9}
+  #btnMute{position:absolute;right:14px;bottom:14px;z-index:30;pointer-events:auto;
+    width:34px;height:34px;border-radius:50%;border:1px solid rgba(120,95,60,.3);
+    background:rgba(237,226,207,.9);font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink)}
+</style>
+</head>
+<body data-page-node-id="wARqycrXoJZi40J6rjv6k2">
+<div id="stage" data-page-node-id="cgHsFsmzekVcVkT58UFuAl">
+  <canvas id="cv" width="480" height="800" data-page-node-id="NCU1366una80Hp0AvuTS41"></canvas>
+
+  <div id="hud" data-page-node-id="upw4FZVIEkyjXrNDf7ynT1">
+    <div class="top" data-page-node-id="r73MtyUu9mhxd2xQ5SahbG">
+      <div data-page-node-id="1U3ghBjo0wqbReWTt1QSN6">
+        <div class="brand" data-page-node-id="GnePirqfTaW1WfC3AC7mXQ">拼贴 · 撕纸局</div>
+        <div class="sub" data-page-node-id="x5u1B5dsgpnAw1k2I3ECWQ">同色三张 · 撕边相咬<br data-page-node-id="FzWvCImhT4EXfKIxGKBGJu">今日纸样 <span id="seedTxt" data-page-node-id="E0eJSr4PPRWYevwbdcZVX1">—</span></div>
+      </div>
+      <div class="scbox" data-page-node-id="iFCTuYg9SJVtglAThXaQCh">
+        <div class="score" id="score" data-page-node-id="oiOMEIF9wufb6z9KIADLNd">0</div>
+        <div class="best" data-page-node-id="qzbirqd8P1EW6nYfFwDBcg">最佳 <span id="best" data-page-node-id="xT1IHA3aBsZJHwe6AJs98n">0</span></div>
+      </div>
+    </div>
+    <div class="rule" data-page-node-id="Kr2jREacz2YKU6UvHqGYjp"></div>
+
+    <div class="bot" data-page-node-id="hxlO1QvFHYNjwDqIZsUQ1e">
+      <div class="cap" data-page-node-id="JYTVIbAkHaFHYwxTpAXLfS">图 鉴</div>
+      <div class="dex" id="dex" data-page-node-id="VeevbSNSYPTaJopGuqHoen"></div>
+      <div class="row" data-page-node-id="rsVcdKxW3P1TEKAt4nMSjz">
+        <div class="slot" data-page-node-id="VFYj01ykiFWjH7n7dnEonn">
+          <span class="lbl" data-page-node-id="5QhOeAszlH15mspH47OJDO">存</span>
+          <div class="chip empty" id="held" data-page-node-id="r9GJVliLUzKVuCBNP7EDgH">—</div>
+          <span class="lbl" style="margin-left:10px" data-page-node-id="oHjO5lcNwzuszr8D4n8mCH">余</span>
+          <div class="dots" id="dots" data-page-node-id="97q0vhDVLZYMNHAQj7mzS0"></div>
+        </div>
+        <div class="slot" data-page-node-id="B7m4JahG5ibIHmnrvvkz1B">
+          <span class="lbl" data-page-node-id="6hXYPFdJb7NtULpF5l5vnq">下一张</span>
+          <div class="chip" id="nextChip" data-page-node-id="mVmFRxK8K6qUKqcoEedslk">—</div>
+        </div>
+        <div class="btns" data-page-node-id="llQllDcqtnEuoeSi9LWMQT">
+          <button class="btn" id="btnAgain" data-page-node-id="Qps8UpT32KQ9pjAF54DDMS">重来</button>
+        </div>
+      </div>
+      <div class="hint" data-page-node-id="OX2xI5rqIBASUO1vh8dd5d">A / D 或 ← → 挪列　·　空格 / ↓ 落纸　·　↑ 换存纸<br data-page-node-id="ew07A2KGXCUnNhmHzuCGNK">手机：直接点按要贴的那一列</div>
+    </div>
+  </div>
+
+  <div class="ov" id="ovStart" data-page-node-id="LWKB6E4FpjhIjNuy9uQ7Bh">
+    <h1 data-page-node-id="2mVuZUTbnNGo7vUodqrfbp">拼贴</h1>
+    <div class="lead" data-page-node-id="vprnwWYb7nvZzDxwtvLf7N">撕 纸 局</div>
+    <div class="box" data-page-node-id="kG0kKa8CCHQBMOeaF0LCh1">
+      <p data-page-node-id="eQ2Mroxqh3G7CNuOYDvtuM">· 从板顶投下<b data-page-node-id="30BU1FrxPKEU8bP0a1bEGH">手撕纸片</b>，落到该列最底</p>
+      <p data-page-node-id="hYNhH1fMAr14EmwfVFkwGI">· <b data-page-node-id="jzYOXqKBhu25iUyXDiVKfe">同色三张</b>四邻相连即合并，升为下一级</p>
+      <p data-page-node-id="iOWJdQwIfLHjXHQwndROtS">· 合并后上面的纸会塌下来，可再撞出<b data-page-node-id="smTsx5n9ERRHIoTjwbW0HQ">连锁</b></p>
+      <p data-page-node-id="H6B6BhmrF2UOgfj6CNDscN">· 板子贴满即收工，没有倒计时、没有失败</p>
+    </div>
+    <button class="go" id="btnStart" data-page-node-id="cdSSj0IlktQSQ2BiYNnG1V">开 始</button>
+    <div class="tail" data-page-node-id="MhqhFkndsPKXKX38aT57am">撕碎的也能拼成一整版。</div>
+  </div>
+
+  <div class="ov hide" id="ovEnd" data-page-node-id="qW8eISU4Ef9I9YZoTXvdII">
+    <h2 data-page-node-id="FRD87yKuoGH1JdsjRi7zZf">收 工</h2>
+    <canvas id="thumb" width="208" height="234" data-page-node-id="aK5cCh9kqhVZ8kRWSHfKg6"></canvas>
+    <div class="big" id="endScore" data-page-node-id="dJEHihEDeH1UPjovRq3JC9">0</div>
+    <div class="stat" data-page-node-id="cCd8B46frqz3r10ElED6Qv">
+      <div data-page-node-id="KQPJ5rOqB6TBJtGTgLIE9U">连锁<b id="endChain" data-page-node-id="n7EjDuhHgeEZXh3Bnr1yEW">0</b></div>
+      <div data-page-node-id="9OKB8NHpl0A4kf2bCqdJc8">最高级<b id="endLv" data-page-node-id="Zg8UhYH4kKR8x4FGgh46rR">一</b></div>
+      <div data-page-node-id="PEbsWUCWUMHIcrYso5FqwW">最佳<b id="endBest" data-page-node-id="eUQ27fDyT3PSxtQ7NqwBHB">0</b></div>
+    </div>
+    <button class="go" id="btnRestart" data-page-node-id="fTd0gkHHU2YCVa12YNvZF2">再 来 一 版</button>
+    <div class="tail" id="endTail" data-page-node-id="9oLvqdm3T5zN07jbgeXJco">纸不够了，就换一种贴法。</div>
+  </div>
+
+  <button id="btnMute" title="静音" data-page-node-id="GDtIO5cgBUwSBO1GxGjRT7">♪</button>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function(){
+  'use strict';
+  var G = window.PaperGame, RR = window.PaperRender;
+  var NUM = RR.NUM, PAPER = RR.PAPER;
+  var stage = document.getElementById('stage');
+  var cv = document.getElementById('cv');
+  var R = RR.create(cv);
+  var ctx = cv.getContext('2d');
+
+  var LS = {
+    get: function(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } },
+    set: function(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  };
+  var mute = LS.get('pc291.mute','0') === '1';
+  var best = parseInt(LS.get('pc291.best','0'),10) || 0;
+  var dex = parseInt(LS.get('pc291.dex','1'),10) || 1;   // bit1 = 一级
+
+  // 今日纸样：每天一个固定种子，能练、能比
+  function todaySeed(){
+    var d = new Date();
+    return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+  }
+  var SEED = todaySeed();
+  document.getElementById('seedTxt').textContent = '#' + SEED;
+
+  var st = null;
+
+  /* ---------- 缩放：canvas CSS 尺寸固定，缩放只交给 #stage 的 transform ---------- */
+  function fit(){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var k = Math.min(vw/480, vh/800);
+    stage.style.transform = 'scale(' + k + ')';
+    var eff = Math.min((window.devicePixelRatio||1) * k, 2.4);
+    cv.width = Math.round(480*eff); cv.height = Math.round(800*eff);
+    cv.style.width = '480px'; cv.style.height = '800px';
+    R.setScale(eff);
+    R._eff = eff;
+  }
+  window.addEventListener('resize', fit);
+
+  /* ---------- 音效：五声音阶 ---------- */
+  var AC = null;
+  function actx(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } } return AC; }
+  var PENT = [0,2,4,7,9];
+  function tone(semi, dur, vol, type){
+    if(mute) return;
+    var a = actx(); if(!a) return;
+    if(a.state === 'suspended') a.resume();
+    var f = 261.63 * Math.pow(2, semi/12);
+    var o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'triangle'; o.frequency.value = f;
+    gn.gain.setValueAtTime(0, a.currentTime);
+    gn.gain.linearRampToValueAtTime(vol, a.currentTime + 0.012);
+    gn.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    o.connect(gn); gn.connect(a.destination);
+    o.start(); o.stop(a.currentTime + dur + 0.02);
+  }
+  function semiOf(L){ var i = L-1; return PENT[i%5] + 12*Math.floor(i/5); }
+  function noise(dur, vol){
+    if(mute) return;
+    var a = actx(); if(!a) return;
+    if(a.state === 'suspended') a.resume();
+    var n = Math.floor(a.sampleRate * dur);
+    var b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    for(var i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    var s = a.createBufferSource(); s.buffer = b;
+    var gn = a.createGain(); gn.gain.value = vol;
+    s.connect(gn); gn.connect(a.destination); s.start();
+  }
+
+  /* ---------- HUD ---------- */
+  var elScore = document.getElementById('score'), elBest = document.getElementById('best');
+  var elDex = document.getElementById('dex'), elHeld = document.getElementById('held');
+  var elNext = document.getElementById('nextChip'), elDots = document.getElementById('dots');
+  var ovStart = document.getElementById('ovStart'), ovEnd = document.getElementById('ovEnd');
+
+  var dexEls = [];
+  for(var i=1;i<=7;i++){
+    var d = document.createElement('div');
+    d.className = 'dx'; d.textContent = NUM[i];
+    d.style.background = PAPER[i];
+    if(i>=4) d.style.color = 'rgba(255,250,240,.92)';
+    elDex.appendChild(d); dexEls.push(d);
+  }
+  var dotEls = [];
+  for(var j=0;j<3;j++){
+    var t = document.createElement('div'); t.className='dot'; elDots.appendChild(t); dotEls.push(t);
+  }
+  function syncDex(){
+    for(var i=1;i<=7;i++) dexEls[i-1].className = 'dx' + ((dex & (1<<(i-1))) ? ' on' : '');
+  }
+  function paintChip(el, L){
+    if(!L){ el.className='chip empty'; el.textContent='—'; el.style.background='transparent'; return; }
+    el.className='chip'; el.textContent = NUM[L];
+    el.style.background = PAPER[L];
+    el.style.color = L>=4 ? 'rgba(255,250,240,.92)' : 'rgba(80,60,30,.72)';
+  }
+  var memo = { score:-1, best:-1, next:-1, held:-1, holds:-1 };
+  function syncHUD(){
+    if(st.score !== memo.score){ elScore.textContent = st.score; memo.score = st.score; }
+    var b = st.best > best ? st.best : best;
+    if(b !== memo.best){ elBest.textContent = b; memo.best = b; }
+    if(st.next !== memo.next){ paintChip(elNext, st.next); memo.next = st.next; }
+    if(st.held !== memo.held){ paintChip(elHeld, st.held); memo.held = st.held; }
+    if(st.holds !== memo.holds){
+      for(var i=0;i<3;i++) dotEls[i].className = 'dot' + (i < st.holds ? '' : ' used');
+      memo.holds = st.holds;
+    }
+  }
+
+  /* ---------- 事件 → 音效 ---------- */
+  function playEvents(evs){
+    for(var i=0;i<evs.length;i++){
+      var e = evs[i];
+      if(e.t === 'place'){ noise(0.05, 0.10); }
+      else if(e.t === 'merge'){
+        tone(semiOf(Math.min(e.level,7)) + 12*Math.min(e.cascade-1,2), 0.30, 0.16, 'triangle');
+        if(e.n >= 5) tone(semiOf(Math.min(e.level,7)) + 19, 0.34, 0.09, 'sine');
+        if(e.capped) tone(24, 0.6, 0.14, 'sine');
+      }
+      else if(e.t === 'hold'){ tone(7, 0.10, 0.07, 'sine'); }
+      else if(e.t === 'move'){ tone(0, 0.035, 0.035, 'sine'); }
+      else if(e.t === 'over'){ endGame(); }
+    }
+  }
+
+  /* ---------- 开局 / 收工 ---------- */
+  function start(){
+    st = G.create({ seed: SEED, best: best });
+    R.reset();
+    memo.score = -1; memo.best = -1; memo.next = -1; memo.held = -1; memo.holds = -1;
+    syncDex(); syncHUD();
+    ovStart.classList.add('hide');
+    ovEnd.classList.add('hide');
+  }
+  function endGame(){
+    if(st.score > best){ best = st.score; LS.set('pc291.best', String(best)); }
+    var nd = dex;
+    for(var L=2;L<=7;L++) if(st.made[L]) nd |= (1<<(L-1));
+    if(nd !== dex){ dex = nd; LS.set('pc291.dex', String(dex)); }
+    syncDex();
+    // 缩略图：必须 drawImage 重画（cloneNode 不拷位图）
+    var th = document.getElementById('thumb'), tc = th.getContext('2d');
+    var g0 = RR.geom;
+    tc.setTransform(1,0,0,1,0,0);
+    tc.fillStyle = '#EDE2CF'; tc.fillRect(0,0,208,234);
+    tc.drawImage(cv, (g0.BX-6)*R._eff, (g0.BY-6)*R._eff, (g0.BW+12)*R._eff, (g0.BH+12)*R._eff, 0, 0, 208, 234);
+    document.getElementById('endScore').textContent = st.score;
+    document.getElementById('endChain').textContent = '×' + st.bestCascade;
+    document.getElementById('endLv').textContent = st.maxMade ? NUM[st.maxMade] : '一';
+    document.getElementById('endBest').textContent = best;
+    document.getElementById('endTail').textContent =
+      st.score >= best && st.score > 0 ? '这一版，是你目前最好的一版。' : '纸不够了，就换一种贴法。';
+    ovEnd.classList.remove('hide');
+  }
+
+  document.getElementById('btnStart').onclick = start;
+  document.getElementById('btnRestart').onclick = start;
+  document.getElementById('btnAgain').onclick = function(){ start(); };
+  var bm = document.getElementById('btnMute');
+  function paintMute(){ bm.textContent = mute ? '✕' : '♪'; bm.style.opacity = mute ? .5 : 1; }
+  bm.onclick = function(e){ e.stopPropagation(); mute = !mute; LS.set('pc291.mute', mute?'1':'0'); paintMute(); if(!mute) tone(12,0.14,0.09,'sine'); };
+  paintMute();
+
+  /* ---------- 输入 ---------- */
+  function keyOf(e){ return e.code || e.key || ''; }
+  window.addEventListener('keydown', function(e){
+    if(!st || st.over) { if(keyOf(e)==='Enter') start(); return; }
+    var k = keyOf(e), kk = (e.key||'').toLowerCase();
+    if(k==='ArrowLeft'||kk==='a'){ G.moveCol(st,-1); e.preventDefault(); }
+    else if(k==='ArrowRight'||kk==='d'){ G.moveCol(st,1); e.preventDefault(); }
+    else if(k==='ArrowDown'||kk==='s'||k==='Space'||kk===' '){ G.drop(st); e.preventDefault(); }
+    else if(k==='ArrowUp'||kk==='w'){ G.hold(st); e.preventDefault(); }
+    else if(kk==='r'){ start(); }
+  }, {passive:false});
+
+  function colAt(clientX, clientY){
+    var r = stage.getBoundingClientRect();
+    var x = (clientX - r.left) / (r.width/480);
+    var y = (clientY - r.top) / (r.height/800);
+    if(y < 90 || y > 626) return -1;
+    var c = Math.floor((x - RR.geom.BX) / RR.geom.CELL);
+    if(c < 0) c = 0; if(c > 7) c = 7;
+    return c;
+  }
+  stage.addEventListener('pointerdown', function(e){
+    if(!st || st.over) return;
+    if(e.target && e.target.tagName === 'BUTTON') return;
+    var c = colAt(e.clientX, e.clientY);
+    if(c < 0) return;
+    G.setCol(st, c);
+    G.drop(st);
+    e.preventDefault();
+  }, {passive:false});
+
+  /* ---------- 主循环：① update → ② 读 events 播音效 → ③ 渲染（渲染层清空 events） ---------- */
+  var last = 0;
+  function frame(now){
+    if(!last) last = now;
+    var dt = (now - last)/1000; last = now;
+    if(!(dt>0)) dt = 0;
+    if(dt > 0.05) dt = 0.05;
+    if(st){
+      G.update(st, dt);          // ①
+      playEvents(st.events);     // ②
+      R.consume(st);             // ③ 生成粒子（并清空 events）
+      R.draw(st, dt);
+      syncHUD();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  fit();
+  st = G.create({ seed: SEED, best: best });
+  syncDex(); syncHUD();
+  requestAnimationFrame(frame);
+
+  window.__game = {
+    get st(){ return st; },
+    G: G, R: R, start: start,
+    seed: SEED,
+    colAt: colAt,
+    fit: fit
+  };
+})();
+</script>
+</body>
+</html>
