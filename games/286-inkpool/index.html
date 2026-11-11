@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="iNWmpKaPO9XH9LH2YUNCqz">
+<head data-page-node-id="feHJKnGopqMoNwYH0WDsEj"><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" data-page-node-id="HOx98gwT3dupDN3O5DCLoO">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" data-page-node-id="hpiwTejVmmvpG4BLED4qAC">
+<meta name="theme-color" content="#EFE7D8" data-page-node-id="DGGNZ68Cm8gZBEvgZ9aisO">
+<title>匀墨 · 五色池</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #E4DAC6;
+    font-family: "KaiTi","STKaiti","PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif;
+    color: #36322C;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 480px; height: 820px;
+    transform-origin: 50% 50%;
+    transform: translate(-50%,-50%);
+    background: #F3EDE0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgba(60,52,40,0.34);
+  }
+  #cv { display: block; width: 480px; height: 820px; position: absolute; left: 0; top: 0; }
+
+  /* ---------- 顶部题款 ---------- */
+  #hud {
+    position: absolute; left: 0; top: 0; width: 480px; height: 88px;
+    pointer-events: none; z-index: 3; padding: 13px 22px 0;
+  }
+  .hrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .hbrand { font-size: 24px; font-weight: 700; letter-spacing: 6px; color: #2A2620; }
+  .hbrand small { font-size: 11.5px; letter-spacing: 3px; color: #8C857A; margin-left: 9px; font-weight: 400; }
+  .hlv { font-size: 12px; color: #8C857A; letter-spacing: 2.4px; }
+  .chips { display: flex; gap: 9px; margin-top: 11px; }
+  .chip { flex: 1; text-align: center; }
+  .chip .k { font-size: 10px; color: #9C9488; letter-spacing: 2px; display: block; }
+  .chip .v { font-size: 17px; font-weight: 700; color: #36322C; letter-spacing: 0.5px; }
+  .chip.cinn .v { color: #C3423F; }
+
+  #tip { position: absolute; left: 0; top: 96px; width: 480px; text-align: center;
+         font-size: 11.5px; color: #8C857A; letter-spacing: 1.6px; z-index: 3; pointer-events: none; }
+  #tip b { color: #C3423F; font-weight: 700; }
+
+  /* ---------- 底部 ---------- */
+  #bar {
+    position: absolute; left: 0; bottom: 0; width: 480px; height: 76px;
+    z-index: 30; display: flex; align-items: center; justify-content: center;
+    gap: 9px; padding: 0 16px 12px; pointer-events: none;
+  }
+  #bar button { pointer-events: auto; font-family: inherit; cursor: pointer; }
+  .bbtn {
+    font-size: 13.5px; color: #4A443B; letter-spacing: 2px;
+    background: rgba(250,246,237,0.86);
+    border: 1px solid rgba(58,53,46,0.20); border-radius: 9px;
+    padding: 9px 15px;
+  }
+  .bbtn:active { background: rgba(58,53,46,0.10); transform: translateY(1px); }
+  #btnLift { border-color: rgba(195,66,63,0.55); color: #C3423F; font-weight: 700; }
+  #btnLift.on { background: rgba(195,66,63,0.14); box-shadow: 0 0 0 2px rgba(195,66,63,0.22) inset; }
+  #btnLift.out { opacity: 0.42; }
+  #btnCalm.on { background: rgba(58,53,46,0.14); border-color: rgba(58,53,46,0.45); }
+
+  #btnMute {
+    position: absolute; right: 14px; top: 14px; z-index: 40;
+    width: 34px; height: 34px; border-radius: 8px; padding: 0;
+    font-family: inherit; font-size: 15px; line-height: 1;
+    color: #6B6259; background: rgba(250,246,237,0.80);
+    border: 1px solid rgba(58,53,46,0.18); cursor: pointer;
+  }
+  #btnMute:active { transform: translateY(1px); }
+
+  /* ---------- 遮罩 ---------- */
+  .ov {
+    position: absolute; left: 0; top: 0; width: 480px; height: 820px;
+    z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(243,237,224,0.965);
+    padding: 0 40px; text-align: center;
+  }
+  .ov.hide { display: none; }
+  .ov h1 { font-size: 40px; letter-spacing: 14px; margin: 0 0 4px; color: #2A2620; font-weight: 700; }
+  .ov h2 { font-size: 13px; letter-spacing: 7px; margin: 0 0 20px; color: #8C857A; font-weight: 400; }
+  .ov p { font-size: 13.5px; line-height: 2.0; color: #5E584F; margin: 0 0 6px; letter-spacing: 0.7px; }
+  .ov p .em { color: #C3423F; }
+  .ov p .dim { color: #8C857A; }
+  .big {
+    font-family: inherit; font-size: 18px; letter-spacing: 7px; color: #F7F2E8;
+    background: #36322C; border: none; border-radius: 10px;
+    padding: 13px 44px; margin-top: 20px; cursor: pointer;
+  }
+  .big:active { transform: translateY(1px); }
+  .ghost {
+    font-family: inherit; font-size: 13.5px; letter-spacing: 3px; color: #6B6259;
+    background: transparent; border: 1px solid rgba(58,53,46,0.22); border-radius: 10px;
+    padding: 10px 24px; margin: 11px 5px 0; cursor: pointer;
+  }
+  .keys { margin-top: 16px; font-size: 11.5px; color: #9C9488; letter-spacing: 1.1px; line-height: 1.9; }
+  .keys b { color: #6B6259; font-weight: 700; }
+
+  /* 选关 */
+  #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 4px; width: 340px; }
+  .lc {
+    height: 74px; border-radius: 9px; cursor: pointer;
+    background: rgba(250,246,237,0.9);
+    border: 1px solid rgba(58,53,46,0.18);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-family: inherit;
+  }
+  .lc:active { transform: translateY(1px); }
+  .lc .n { font-size: 19px; font-weight: 700; color: #36322C; letter-spacing: 1px; }
+  .lc .s { font-size: 12px; color: #C3423F; letter-spacing: 2px; height: 15px; }
+  .lc .s .off { color: rgba(58,53,46,0.16); }
+  .lc .b { font-size: 10px; color: #9C9488; letter-spacing: 1px; }
+  .lc.lock { opacity: 0.40; cursor: not-allowed; }
+  .lc.cur { border-color: #C3423F; box-shadow: 0 0 0 2px rgba(195,66,63,0.18) inset; }
+
+  .tbl { width: 300px; margin: 6px 0 2px; }
+  .tbl .tr { display: flex; justify-content: space-between; padding: 6px 2px;
+             border-bottom: 1px dashed rgba(58,53,46,0.16); font-size: 14px; }
+  .tbl .tr:last-child { border-bottom: none; }
+  .tbl .tr .k { color: #8C857A; letter-spacing: 2px; }
+  .tbl .tr .v { color: #36322C; font-weight: 700; }
+  .tbl .tr .v.m { color: #C3423F; }
+  .stars { font-size: 27px; letter-spacing: 10px; color: #C3423F; margin-bottom: 2px; height: 34px; }
+  .stars .off { color: rgba(58,53,46,0.15); }
+  .line { font-size: 14px; color: #5E584F; letter-spacing: 2.0px; line-height: 2.15; margin-top: 18px; }
+  .best { font-size: 11.5px; color: #9C9488; letter-spacing: 2px; margin-top: 12px; }
+</style>
+</head>
+<body data-page-node-id="xE5Yb6s4TAQZchNLVNrzUY">
+<div id="stage" data-page-node-id="LrBW16nsUCGyQKyrabuFFm">
+  <canvas id="cv" width="480" height="820" data-page-node-id="UisjPUu0FLrFdhBlH1YHzb"></canvas>
+
+  <div id="hud" data-page-node-id="Nm9ACc6YJ8zBVGvJn8yYqM">
+    <div class="hrow" data-page-node-id="E4TpBEU5jToxjMHhJmEURL">
+      <div class="hbrand" data-page-node-id="rHuaqF1LIsog4qL41zY5oc">匀墨<small data-page-node-id="f4bfj13ceR7TyjoNF0XLM1">五色池</small></div>
+      <div class="hlv" id="lv" data-page-node-id="YRHNA9i0smTcUZvFXwVx6S">第一池</div>
+    </div>
+    <div class="chips" data-page-node-id="mYwaBsxO9qTdcsiCarFBZO">
+      <div class="chip" data-page-node-id="ppcje3nxig8nU8ojavrZm5"><span class="k" data-page-node-id="sgIq1kZF0MyOGn87fec6cW">步</span><span class="v" id="mv" data-page-node-id="dIzYmt24ekIZDcgvSZNTS1">0</span></div>
+      <div class="chip" data-page-node-id="ceH1aYQ23zmoWS8TSNs1pK"><span class="k" data-page-node-id="JMUFCmt3qvLw0YjaO5lVt3">时</span><span class="v" id="tm" data-page-node-id="U1KdVlyy72ENVX38ZKw0qr">0:00</span></div>
+      <div class="chip cinn" data-page-node-id="LC3MB8Dmwkc432PoOvaDGA"><span class="k" data-page-node-id="9udiGPkAM5efODlyC4yE02">提笔</span><span class="v" id="lf" data-page-node-id="z5dDO4eFpHBFuAWECTEqi4">3</span></div>
+      <div class="chip" data-page-node-id="Xoz83vqmTvt6VuhB24Qw1r"><span class="k" data-page-node-id="qblyEEB7AUdhdU3UNRdxRh">匀</span><span class="v" id="dn" data-page-node-id="OoKKItfcZBmE3Cj1WaS6na">0/3</span></div>
+    </div>
+  </div>
+  <div id="tip" data-page-node-id="a2va6LrCMFUWZXwcIEwC1h">点一只盂提起，再点一只倾过去</div>
+
+  <div id="bar" data-page-node-id="TfaS3SWVJ798x61RqoV6Jy">
+    <button class="bbtn" id="btnLift" data-page-node-id="lh1jbFx5CbDXjlVjNk23NN">提笔 3</button>
+    <button class="bbtn" id="btnCalm" data-page-node-id="CV1AbA7pbBLawt2mi5v5l1">静笔</button>
+    <button class="bbtn" id="btnRedo" data-page-node-id="yBHTqwqD7G1dMHHErBZO0C">重来</button>
+    <button class="bbtn" id="btnMenu" data-page-node-id="YaAdrb5dT88rKKRIj2qGZk">选关</button>
+  </div>
+
+  <button id="btnMute" title="静音" data-page-node-id="tCpGpLlFeoGwUfpuxCzoCR">♪</button>
+
+  <!-- 开始 / 选关 -->
+  <div class="ov" id="ovStart" data-page-node-id="kWzUAu6bObkt6NBjO39x40">
+    <h1 data-page-node-id="HUr3Tgok5EOzC6lyIo9kmb">匀墨</h1>
+    <h2 data-page-node-id="9uAk6S9hg2c3wR5iWa3zDs">五 色 池</h2>
+    <p data-page-node-id="3yVlGgBCZcn14ph43ufSD8">案上几只墨盂，五色墨混在一处。</p>
+    <p data-page-node-id="flhjbQUX2mnRf7DASLTDHt">点一只<span class="em" data-page-node-id="46VTXEgcmlztyiEtKlxbtk">提起</span>，再点一只<span class="em" data-page-node-id="T4Fu0sPeJbD5lYb9iuNszt">倾过去</span>——只有空盂、或盂面同色，才接得住。</p>
+    <p data-page-node-id="QuuxVyyIOx5m3PrRmW3YS8">墨面在<span class="em" data-page-node-id="FffAdct5QPIr2JDfLkm82C">呼吸</span>：<b data-page-node-id="bhdd85yWwrA2l7qOIz2BDx">静</b>时一笔倾完整注，<b data-page-node-id="OuGlIbh15BA7OKyYfIQGu0">晃</b>时只带得动半注，剩下的留在原处。</p>
+    <p class="dim" data-page-node-id="AFAlvGhLZ5DHJK8SQS191V">想省手就等「静」，想分半注填缝就趁「晃」。</p>
+    <div id="grid" data-page-node-id="8AabDhjKBLsOgPBoJXGDwp"></div>
+    <button class="big" id="btnGo" data-page-node-id="l0I6Xrqxxsoh8vz0ejPPvI">起 笔</button>
+    <div class="keys" data-page-node-id="dtHyCFBxPk6E4KWCozbCUj">
+      <b data-page-node-id="7PRpehmKGBABz70PcupBTC">1</b>–<b data-page-node-id="3d7lUWB4s8D5kGU9xtMPjo">7</b> 选盂 · <b data-page-node-id="ZKO1KDE0NYEzpJm0NEIfr5">A D</b>/<b data-page-node-id="7wYttWfhyA8uzRLGksJxeZ">← →</b> 移笔 · <b data-page-node-id="RQtETBFjZhZyWedLY8DKcS">W</b>/<b data-page-node-id="fQB55k7KqoeiuqG5Xm1ASe">↑</b> 提起 · <b data-page-node-id="9IgjcMvLLUzXq7gY3a0YLz">S</b>/<b data-page-node-id="8GMBn8DqylbI5u1fdF7Jp9">↓</b> 放下<br data-page-node-id="61xl1aFXIJoxYsIJSYFfyC">
+      <b data-page-node-id="Qgp4PhTIB2YByhngNyPBnY">F</b> 提笔 · <b data-page-node-id="CIpzqKG4hWGS38fBOFxA3M">R</b> 重来 · <b data-page-node-id="fT3Iy7voLcVERWP8Gi4kry">Esc</b> 取消
+    </div>
+  </div>
+
+  <!-- 单关结算 -->
+  <div class="ov hide" id="ovClear" data-page-node-id="2FctNlxKhoHXfCSMMxNQGa">
+    <h1 id="clTitle" style="font-size:32px;letter-spacing:10px;" data-page-node-id="6oR73klHIbVCZhOLpv6YwB">匀 了</h1>
+    <div class="stars" id="clStars" data-page-node-id="EosNR0qKXb8AW1hiKL8EwB"></div>
+    <div class="tbl" data-page-node-id="NaYxMoGQS6zCXewiHCrC2z">
+      <div class="tr" data-page-node-id="14TJrslypGdz6UuSvLGKGU"><span class="k" data-page-node-id="mHxsSVFVTOTt4YctHNLHFl">步 数</span><span class="v m" id="clMv" data-page-node-id="xV1e1FnJegiMcTf66nbjN9">0</span></div>
+      <div class="tr" data-page-node-id="UftSSSlkx8PA5TOLSDfV0C"><span class="k" data-page-node-id="SBD42xUEB2y3sqCgVomiC5">用 时</span><span class="v" id="clTm" data-page-node-id="p5iR6kwA0etREkCpAPIReV">0:00</span></div>
+      <div class="tr" data-page-node-id="GgaEBUfiqjefVGRm2a1NOP"><span class="k" data-page-node-id="rzCJNpaBF50vAWOYWmfXHV">提笔余</span><span class="v" id="clLf" data-page-node-id="PKnl5cJH9dGOPaYiKUNrVi">0</span></div>
+      <div class="tr" data-page-node-id="UKrX96j74HEa7wnnZBCKe0"><span class="k" data-page-node-id="VFVRmjsvDpR2Thkw5K9x9h">润 笔</span><span class="v" id="clRl" data-page-node-id="3LYAgX2jNeHS90mTUXWNFu">0</span></div>
+    </div>
+    <div class="line" id="clLine" data-page-node-id="AEkR7SwOuP7DHwCemLKBpF"></div>
+    <div class="best" id="clBest" data-page-node-id="RBD0Gcd7dVfnidUisXW7nE"></div>
+    <button class="big" id="btnNext" data-page-node-id="xj6ZWCK7mDJOj4gZUq1r5P">下 一 池</button>
+    <button class="ghost" id="btnAgain" data-page-node-id="OOtHa0ZtTYheg4La8w5SCn">再匀一遍</button>
+    <button class="ghost" id="btnBack" data-page-node-id="jjtHQVII2r4VW8ysJDBRqq">选 关</button>
+  </div>
+
+  <!-- 全通 -->
+  <div class="ov hide" id="ovAll" data-page-node-id="Iq6cy1HREE4Qw8IAR3F7xf">
+    <h1 style="font-size:32px;letter-spacing:10px;" data-page-node-id="CbSCKEqVpus333R7QgnV76">八 池 皆 匀</h1>
+    <div class="line" style="margin-top:26px;" data-page-node-id="g871699uH6PsO6aXI4VyrT">
+      一池墨，分了几次才匀。<br data-page-node-id="GvFUoWdBEm7qSBpKA1FxgK">
+      手抖的那一笔，也在里头。<br data-page-node-id="ljPwha5AHhSBtWobg5PNKW">
+      也挺好的。
+    </div>
+    <div class="best" id="allBest" data-page-node-id="zBKSrdyohsGdpNXYKi9JhX"></div>
+    <button class="big" id="btnBack2" data-page-node-id="rOMJozEm2bGBQ74CKmViQ2">回 到 案 前</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = globalThis.InkPool, R = globalThis.InkRender;
+  var W = 480, H = 820;
+  var stage = document.getElementById('stage');
+  var cv = document.getElementById('cv');
+  var KEY = 'inkpool286';
+
+  /* ---------------- 存档 ---------------- */
+  var save = { best: {}, unlocked: 1, mute: false, calm: false };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); if (o && typeof o === 'object') { save.best = o.best || {}; save.unlocked = o.unlocked || 1; save.mute = !!o.mute; save.calm = !!o.calm; } }
+  } catch (e) {}
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+
+  /* ---------------- 音频 ---------------- */
+  var ac = null, master = null;
+  var PENT = [261.63, 293.66, 329.63, 392.00, 440.00];
+  function audio() {
+    if (ac) return ac;
+    try {
+      var C = window.AudioContext || window.webkitAudioContext;
+      ac = new C();
+      master = ac.createGain();
+      master.gain.value = save.mute ? 0 : 0.5;
+      master.connect(ac.destination);
+    } catch (e) { ac = null; }
+    return ac;
+  }
+  function pluck(f, dur, gain, type, delay) {
+    if (!ac || save.mute) return;
+    var t0 = ac.currentTime + (delay || 0);
+    var o = ac.createOscillator(), gn = ac.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f, t0);
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.linearRampToValueAtTime(gain, t0 + 0.010);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(gn); gn.connect(master);
+    o.start(t0); o.stop(t0 + dur + 0.06);
+  }
+  function hiss(dur, freq, q, gain) {
+    if (!ac || save.mute) return;
+    var len = Math.max(1, Math.ceil(ac.sampleRate * dur));
+    var buf = ac.createBuffer(1, len, ac.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = ac.createBufferSource(); src.buffer = buf;
+    var bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+    var gn = ac.createGain(); gn.gain.value = gain;
+    src.connect(bp); bp.connect(gn); gn.connect(master);
+    src.start();
+  }
+  function sfxPour(grade, amount, calm) {
+    var f = PENT[grade % 5] * 2;
+    for (var i = 0; i < Math.min(3, amount); i++) pluck(f * (1 + i * 0.004), 0.42, 0.16, 'sine', i * 0.06);
+    hiss(0.16, calm ? 900 : 1500, 1.1, 0.10);
+  }
+  function sfxDeny() { pluck(103, 0.20, 0.13, 'triangle'); hiss(0.09, 320, 1.6, 0.06); }
+  function sfxUnify() { pluck(523.25, 0.75, 0.13, 'sine'); pluck(659.25, 0.75, 0.09, 'sine', 0.05); pluck(783.99, 0.85, 0.07, 'sine', 0.10); }
+  function sfxLift() { hiss(0.20, 2300, 0.9, 0.13); pluck(392.00, 0.30, 0.10, 'triangle'); }
+  function sfxRelief() { pluck(329.63, 0.9, 0.11, 'sine'); pluck(440.00, 1.1, 0.08, 'sine', 0.12); }
+  function sfxClear() {
+    for (var i = 0; i < 5; i++) pluck(PENT[i] * 2, 1.1, 0.12, 'sine', i * 0.085);
+    hiss(0.5, 700, 0.7, 0.07);
+  }
+  function sfxTap() { pluck(587.33, 0.14, 0.07, 'sine'); }
+
+  /* ---------------- 状态 ---------------- */
+  var st = G.create(1);
+  var running = false, inMenu = true, lastT = 0, clearT = 0;
+
+  /* ---------------- DOM ---------------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var elLv = $('lv'), elMv = $('mv'), elTm = $('tm'), elLf = $('lf'), elDn = $('dn'), elTip = $('tip');
+  var btnLift = $('btnLift'), btnCalm = $('btnCalm'), btnMute = $('btnMute');
+  var ovStart = $('ovStart'), ovClear = $('ovClear'), ovAll = $('ovAll'), grid = $('grid');
+  var LVN = ['第一池', '第二池', '第三池', '第四池', '第五池', '第六池', '第七池', '第八池'];
+
+  function fmt(t) {
+    var m = Math.floor(t / 60), s = Math.floor(t % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function hud() {
+    elLv.textContent = LVN[st.level - 1] || ('第' + st.level + '池');
+    elMv.textContent = st.moves;
+    elTm.textContent = fmt(st.time);
+    elLf.textContent = st.lifts;
+    elDn.textContent = G.doneCount(st) + '/' + st.ng;
+    btnLift.textContent = '提笔 ' + st.lifts;
+    btnLift.className = 'bbtn' + (st.liftMode ? ' on' : '') + (st.lifts <= 0 ? ' out' : '');
+    btnCalm.className = 'bbtn' + (st.calmLock ? ' on' : '');
+    var calm = G.isCalm(st);
+    elTip.innerHTML = st.sel >= 0
+      ? (calm ? '墨面正<b>静</b> · 这一笔是整注' : '墨面在<b>晃</b> · 只带得动半注')
+      : (st.liftMode ? '提笔中 · 点一只盂取墨，再点一只放下（可叠异色）'
+        : '点一只盂提起，再点一只倾过去');
+  }
+
+  /* ---------------- 选关网格 ---------------- */
+  function starStr(n) {
+    var s = '';
+    for (var i = 0; i < 3; i++) s += i < n ? '印' : '<span class="off">印</span>';
+    return s;
+  }
+  function drawGrid() {
+    var html = '';
+    for (var i = 1; i <= G.LEVELS.length; i++) {
+      var L = G.LEVELS[i - 1];
+      var lock = i > save.unlocked;
+      var b = save.best[i];
+      html += '<button class="lc' + (lock ? ' lock' : '') + (i === save.unlocked ? ' cur' : '') + '" data-lv="' + i + '"' + (lock ? ' disabled' : '') + '>'
+        + '<span class="n">' + i + '</span>'
+        + '<span class="s">' + (b ? starStr(b.stars) : (lock ? '' : '<span class="off">印印印</span>')) + '</span>'
+        + '<span class="b">' + L.g + '色 · ' + L.cap + '格</span>'
+        + '</button>';
+    }
+    grid.innerHTML = html;
+    Array.prototype.forEach.call(grid.querySelectorAll('.lc'), function (el) {
+      el.addEventListener('click', function () {
+        var lv = parseInt(el.getAttribute('data-lv'), 10);
+        if (lv > save.unlocked) return;
+        audio(); sfxTap();
+        startLevel(lv);
+      });
+    });
+  }
+
+  /* ---------------- 流程 ---------------- */
+  function startLevel(lv, seed) {
+    st = G.create(lv, seed);
+    st.calmLock = save.calm;
+    R.setLevel(st);
+    ovStart.classList.add('hide');
+    ovClear.classList.add('hide');
+    ovAll.classList.add('hide');
+    inMenu = false; running = true; clearT = 0;
+    hud();
+  }
+  function openMenu() {
+    inMenu = true; running = false;
+    drawGrid();
+    ovClear.classList.add('hide');
+    ovAll.classList.add('hide');
+    ovStart.classList.remove('hide');
+  }
+  function onClear() {
+    running = false;
+    var s = G.stars(st);
+    var prev = save.best[st.level];
+    if (!prev || st.moves < prev.moves) save.best[st.level] = { stars: s, moves: st.moves, time: Math.round(st.time * 10) / 10 };
+    else if (s > prev.stars) prev.stars = s;
+    if (st.level >= save.unlocked && st.level < G.LEVELS.length) save.unlocked = st.level + 1;
+    persist();
+    $('clTitle').textContent = '匀 了';
+    $('clStars').innerHTML = starStr(s);
+    $('clMv').textContent = st.moves + ' 步';
+    $('clTm').textContent = fmt(st.time);
+    $('clLf').textContent = st.lifts + ' / ' + st.liftsMax;
+    $('clRl').textContent = st.relief + ' 次';
+    var LINES = [
+      '有的墨非得分两次才肯匀。<br>不急。<br>它在等你手稳。',
+      '少的那半注，还在原处。<br>它没跑。<br>只是还没轮到它。',
+      '你以为在理墨。<br>其实墨也在理你。<br>一下，一下。',
+      '匀了的池子不再呼吸。<br>剩下的还在晃。<br>那就再提一次笔。'
+    ];
+    $('clLine').innerHTML = LINES[(st.level - 1) % LINES.length];
+    var b = save.best[st.level];
+    $('clBest').textContent = b ? ('本池最少 ' + b.moves + ' 步') : '';
+    $('btnNext').style.display = (st.level < G.LEVELS.length) ? '' : 'none';
+    clearT = 0;
+    sfxClear();
+    setTimeout(function () { ovClear.classList.remove('hide'); }, 620);
+  }
+
+  /* ---------------- 输入 ---------------- */
+  function tapAt(mx, my) {
+    var i = R.hitTest(st, mx, my);
+    G.tap(st, i);
+  }
+  function toLocal(e) {
+    var r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+  }
+  cv.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    audio();
+    if (!running) return;
+    var p = toLocal(e);
+    tapAt(p.x, p.y);
+    hud();
+  });
+
+  btnLift.addEventListener('click', function () {
+    if (!running) return;
+    audio();
+    if (st.lifts <= 0) { sfxDeny(); return; }
+    st.liftMode = !st.liftMode;
+    if (st.liftMode) st.sel = -1;
+    sfxTap(); hud();
+  });
+  btnCalm.addEventListener('click', function () {
+    audio();
+    st.calmLock = !st.calmLock;
+    save.calm = st.calmLock; persist();
+    sfxTap(); hud();
+  });
+  $('btnRedo').addEventListener('click', function () {
+    if (!running) return;
+    audio(); sfxTap();
+    G.restart(st);
+    R.setLevel(st);
+    hud();
+  });
+  $('btnMenu').addEventListener('click', function () { audio(); sfxTap(); openMenu(); });
+  btnMute.addEventListener('click', function () {
+    audio();
+    save.mute = !save.mute; persist();
+    if (master) master.gain.value = save.mute ? 0 : 0.5;
+    btnMute.textContent = save.mute ? '×' : '♪';
+    if (!save.mute) sfxTap();
+  });
+  btnMute.textContent = save.mute ? '×' : '♪';
+
+  $('btnGo').addEventListener('click', function () { audio(); sfxTap(); startLevel(Math.min(save.unlocked, G.LEVELS.length)); });
+  $('btnNext').addEventListener('click', function () { audio(); sfxTap(); startLevel(Math.min(G.LEVELS.length, st.level + 1)); });
+  $('btnAgain').addEventListener('click', function () { audio(); sfxTap(); startLevel(st.level); });
+  $('btnBack').addEventListener('click', function () { audio(); sfxTap(); openMenu(); });
+  $('btnBack2').addEventListener('click', function () { audio(); sfxTap(); openMenu(); });
+
+  function keyOf(e) {
+    var c = e.code || '', k = e.key || '';
+    if (c === 'ArrowLeft' || k === 'ArrowLeft' || k === 'a' || k === 'A') return 'left';
+    if (c === 'ArrowRight' || k === 'ArrowRight' || k === 'd' || k === 'D') return 'right';
+    if (c === 'ArrowUp' || k === 'ArrowUp' || k === 'w' || k === 'W') return 'up';
+    if (c === 'ArrowDown' || k === 'ArrowDown' || k === 's' || k === 'S') return 'down';
+    if (k === 'Escape' || c === 'Escape') return 'esc';
+    if (k === 'r' || k === 'R') return 'r';
+    if (k === 'f' || k === 'F') return 'f';
+    if (k === ' ') return 'space';
+    if (k >= '1' && k <= '9') return 'num' + k;
+    return null;
+  }
+  window.addEventListener('keydown', function (e) {
+    var k = keyOf(e);
+    if (!k) return;
+    if (inMenu) {
+      if (k === 'space' || k === 'up') { e.preventDefault(); audio(); sfxTap(); startLevel(Math.min(save.unlocked, G.LEVELS.length)); }
+      return;
+    }
+    e.preventDefault();
+    audio();
+    if (k === 'left') { st.cur = (st.cur - 1 + st.np) % st.np; sfxTap(); }
+    else if (k === 'right') { st.cur = (st.cur + 1) % st.np; sfxTap(); }
+    else if (k === 'up' || k === 'space') { G.tap(st, st.cur); }
+    else if (k === 'down') { if (st.sel >= 0) { st.sel = -1; st.events.push({ t: 'deselect' }); } }
+    else if (k === 'esc') { st.sel = -1; st.liftMode = false; }
+    else if (k === 'r') { G.restart(st); R.setLevel(st); }
+    else if (k === 'f') { if (st.lifts > 0) { st.liftMode = !st.liftMode; if (st.liftMode) st.sel = -1; } }
+    else if (k.indexOf('num') === 0) { var n = parseInt(k.slice(3), 10); if (n <= st.np) G.tap(st, n - 1); }
+    hud();
+  });
+
+  /* ---------------- 缩放 ---------------- */
+  var curEff = 0;
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var k = Math.min(vw / W, vh / H);
+    stage.style.transform = 'translate(-50%,-50%) scale(' + k + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var eff = Math.min(3, Math.max(1, dpr * Math.min(1.5, Math.max(1, k))));
+    if (Math.abs(eff - curEff) > 0.02) {
+      curEff = eff;
+      cv.width = Math.round(W * eff);
+      cv.height = Math.round(H * eff);
+      cv.style.width = W + 'px';
+      cv.style.height = H + 'px';
+      if (!window.__inkInit) { R.init(cv, eff); window.__inkInit = true; R.setLevel(st); }
+      else R.setEff(eff);
+    }
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
+  /* ---------------- 主循环 ---------------- */
+  function frame(ts) {
+    var dt = lastT ? (ts - lastT) / 1000 : 0.016;
+    lastT = ts;
+    if (dt > 0.06) dt = 0.06;
+
+    // ① 先 update（产出事件）
+    if (running && st.phase === 'play') G.update(st, dt);
+    else if (st.phase === 'play') st.breath = (st.breath + dt / G.BREATH_T) % 1;
+
+    // ② 再读事件播音效
+    for (var i = 0; i < st.events.length; i++) {
+      var ev = st.events[i];
+      if (ev.t === 'pour') sfxPour(ev.grade, ev.amount, ev.calm);
+      else if (ev.t === 'liftMove') sfxLift();
+      else if (ev.t === 'deny') sfxDeny();
+      else if (ev.t === 'unify') sfxUnify();
+      else if (ev.t === 'relief') sfxRelief();
+      else if (ev.t === 'clear') { onClear(); }
+    }
+
+    // ③ 最后渲染（渲染层清空 events）
+    R.draw(st, dt);
+
+    if (running) hud();
+    requestAnimationFrame(frame);
+  }
+
+  fit();
+  drawGrid();
+  hud();
+  requestAnimationFrame(frame);
+
+  // 探针
+  window.__game = {
+    st: function () { return st; },
+    G: G, R: R,
+    tap: function (i) { G.tap(st, i); hud(); },
+    start: startLevel,
+    save: save,
+    setSel: function (i) { st.sel = i; },
+    state: function () {
+      return {
+        level: st.level, np: st.np, cap: st.cap, ng: st.ng,
+        pools: st.pools.map(function (p) { return p.slice(); }),
+        sel: st.sel, cur: st.cur, liftMode: st.liftMode,
+        moves: st.moves, time: st.time, lifts: st.lifts, breath: st.breath,
+        phase: st.phase, done: G.doneCount(st), calm: G.isCalm(st),
+        hasMove: G.hasMove(st)
+      };
+    }
+  };
+})();
+</script>
+</body>
+</html>
