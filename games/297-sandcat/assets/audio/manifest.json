@@ -1,0 +1,17 @@
+{
+  "game": "297-sandcat",
+  "title": "落沙 · 引猫夜",
+  "note": "全部槽位可选。放入同名文件即自动接管；缺少或加载失败时静默回退到 WebAudio 合成音。",
+  "dir": "assets/audio/",
+  "files": [
+    { "slot": "bgm",    "path": "assets/audio/bgm.mp3",      "loop": true,  "desc": "背景音乐（环境底噪 + 和弦垫 + 五声铃）" },
+    { "slot": "tap",    "path": "assets/audio/sfx/tap.mp3",  "loop": false, "desc": "轻点一下，落一格沙" },
+    { "slot": "land",   "path": "assets/audio/sfx/land.mp3", "loop": false, "desc": "沙粒落地" },
+    { "slot": "shovel", "path": "assets/audio/sfx/shovel.mp3", "loop": false, "desc": "铲起一铲沙" },
+    { "slot": "lamp",   "path": "assets/audio/sfx/lamp.mp3", "loop": false, "desc": "猫走过点亮地灯" },
+    { "slot": "meow",   "path": "assets/audio/sfx/meow.mp3", "loop": false, "desc": "猫被地形卡住时叫" },
+    { "slot": "home",   "path": "assets/audio/sfx/home.mp3", "loop": false, "desc": "一只猫到家" },
+    { "slot": "win",    "path": "assets/audio/sfx/win.mp3",  "loop": false, "desc": "全城通关" }
+  ],
+  "synthesized": ["bgm", "tap", "land", "shovel", "lamp", "meow", "home", "win"]
+}

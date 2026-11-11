@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0A0D14">
+<meta name="description" content="夜里一座微缩城，几只橘猫要回窝。你碰不到猫，只能选一列按住倒沙——沙有休止角，永远只能铺成缓坡。">
+<title>落沙 · 引猫夜</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+
+      <div id="hud">
+        <div class="pill">
+          <div class="cell"><span class="k">关</span><span class="v" id="hLv">1</span></div>
+          <div class="sep"></div>
+          <div class="cell"><span class="k">到家</span><span class="v" id="hCat">0/1</span></div>
+          <div class="sep"></div>
+          <div class="cell"><span class="k">地灯</span><span class="v" id="hLamp">0/0</span></div>
+        </div>
+        <div class="pill" id="sandWrap">
+          <div id="sandTop"><span class="k">沙</span><span class="v" id="hSand" style="font-size:calc(15px * var(--inv))">0</span></div>
+          <div id="sandBar"><div id="sandFill"></div></div>
+        </div>
+        <div class="pill" id="bestPill">
+          <div class="cell"><span class="k">最佳</span><span class="v" id="hBest" style="font-size:calc(15px * var(--inv))">—</span></div>
+        </div>
+      </div>
+
+      <div id="bar">
+        <div class="seg">
+          <button class="btn" id="bPourM">落沙</button>
+          <button class="btn" id="bShovM">铲沙</button>
+        </div>
+        <button class="btn sq" id="bLeft" title="左移">◀</button>
+        <button class="btn big wide" id="bAct">按住落沙</button>
+        <button class="btn sq" id="bRight" title="右移">▶</button>
+        <button class="btn sq" id="bReset" title="重来">↺</button>
+        <button class="btn sq" id="bLv" title="选关">☰</button>
+        <button class="btn sq" id="bMute" title="音乐 / 音效">♪</button>
+      </div>
+
+      <div id="mask"><div class="card" id="card"></div></div>
+    </div>
+  </div>
+</div>
+<div id="portrait">🐈 横过来看这条街更舒服 · <b>点这里继续</b></div>
+
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
