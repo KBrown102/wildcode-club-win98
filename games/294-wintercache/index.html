@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>藏冬 · 松果纪</title>
+<style>
+  :root{
+    --bg:#2A1F0C; --panel:#3C2C11; --panel2:#241A07; --line:#5A4320;
+    --ink:#FFF0D2; --ink2:#E4C88C; --slate:#C6A76A;
+    --brass:#E8C87E; --verm:#C4553B; --frost:#C9C4E0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);overflow:hidden;
+    font-family:"Songti SC","SimSun","Noto Serif CJK SC",serif;color:var(--ink)}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{width:480px;height:870px;flex:0 0 auto;position:relative;
+    background:var(--panel);border-radius:10px;overflow:hidden;
+    box-shadow:0 14px 50px rgba(0,0,0,.62);transform-origin:center center}
+
+  #hud{height:62px;display:flex;align-items:center;gap:10px;padding:0 14px;
+    border-bottom:1px solid var(--line);background:linear-gradient(#4A3616,#33250C)}
+  #hud .lv{font-size:15px;letter-spacing:2px;min-width:96px;color:var(--ink)}
+  #enWrap{flex:1;display:flex;flex-direction:column;gap:3px}
+  #enWrap .lb{font-size:10.5px;color:var(--slate);letter-spacing:2px;display:flex;justify-content:space-between}
+  #enBar{height:7px;background:#241A07;border-radius:4px;overflow:hidden}
+  #enBar i{display:block;height:100%;width:100%;
+    background:linear-gradient(90deg,#B8863C,#E8C87E);border-radius:4px;transition:width .1s linear}
+  #hud .rt{text-align:right;min-width:118px}
+  #hud .rt b{font-size:19px;color:var(--brass);font-weight:600;font-variant-numeric:tabular-nums}
+  #hud .rt span{display:block;font-size:11px;color:var(--slate);letter-spacing:1px;
+    font-variant-numeric:tabular-nums}
+
+  canvas{display:block;width:480px;height:732px;background:#3E3118}
+
+  #ctl{height:76px;display:flex;gap:7px;padding:9px 11px;align-items:stretch;
+    border-top:1px solid var(--line);background:linear-gradient(#3A2A10,#241A07)}
+  #ctl button{flex:1;border:1px solid #6B5024;background:#4A3616;color:var(--ink);
+    border-radius:8px;font-family:inherit;font-size:15px;letter-spacing:2px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;
+    user-select:none;touch-action:none;transition:background .08s,transform .06s}
+  #ctl button:active,#ctl button.on{background:#63491D;transform:translateY(1px)}
+  #ctl button small{font-size:10px;color:var(--slate);letter-spacing:0}
+  #ctl button.br{color:var(--brass);border-color:#8A6B2C}
+  #ctl button.br:active,#ctl button.br.on{background:#5C4519}
+  #ctl button.fr{color:var(--frost);border-color:#5C5478}
+  #ctl button.ds{opacity:.34}
+
+  .ov{position:absolute;inset:0;background:rgba(30,22,8,.975);z-index:20;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:22px 26px;text-align:center}
+  .ov.hide{display:none}
+  .ov h1{font-size:29px;margin:0 0 6px;letter-spacing:7px;font-weight:600;color:#FFF3D6}
+  .ov .sub{font-size:12px;color:var(--slate);letter-spacing:3px;margin-bottom:14px}
+  .ov p{font-size:13.5px;line-height:2.0;color:var(--ink2);margin:2px 0;max-width:410px}
+  .ov p em{font-style:normal;color:var(--brass)}
+  .ov p em.f{color:var(--frost)}
+  .ov .keys{font-size:12.5px;color:var(--slate);margin:10px 0 2px;line-height:1.95}
+  .ov .keys b{color:var(--ink);font-weight:600}
+  .btn{margin-top:15px;border:1px solid var(--brass);background:transparent;color:var(--brass);
+    font-family:inherit;font-size:15px;letter-spacing:4px;padding:10px 26px;border-radius:6px;cursor:pointer}
+  .btn.solid{background:var(--brass);color:#2A1F0C}
+  .btn.ghost{border-color:#6B5024;color:var(--ink2);margin-left:8px}
+  .btn:active{opacity:.82}
+  #grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px;width:410px}
+  #grid button{border:1px solid #6B5024;background:#4A3616;border-radius:7px;padding:7px 2px 5px;
+    font-family:inherit;cursor:pointer;color:var(--ink);line-height:1.35}
+  #grid button:disabled{opacity:.3;cursor:not-allowed}
+  #grid button span{display:block;font-size:12.5px}
+  #grid button i{display:block;font-size:10px;color:var(--brass);font-style:normal;height:13px;letter-spacing:1px}
+  #grid button small{display:block;font-size:9.5px;color:var(--slate)}
+  .stat{display:grid;grid-template-columns:auto auto;gap:4px 20px;font-size:13.5px;
+    margin:8px 0 2px;color:var(--ink2)}
+  .stat b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .stars{font-size:28px;color:var(--brass);letter-spacing:8px;height:34px}
+  .endline{font-size:13.5px;color:var(--slate);margin-top:11px;letter-spacing:2px}
+  .best{font-size:11.5px;color:var(--slate);margin-top:7px;letter-spacing:1px}
+
+  #snd{position:absolute;right:11px;bottom:86px;z-index:30;width:32px;height:32px;
+    border:1px solid #6B5024;background:rgba(36,26,7,.92);border-radius:50%;
+    font-size:14px;cursor:pointer;color:var(--ink2);line-height:1}
+  #hint{position:absolute;left:0;right:0;top:70px;z-index:15;text-align:center;
+    font-size:12.5px;color:#FFF0D2;text-shadow:0 1px 6px rgba(0,0,0,.7);letter-spacing:2px;
+    pointer-events:none;opacity:0;transition:opacity .5s}
+  #hint.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+
+  <div id="hud">
+    <div class="lv" id="lvName">一 · 初霜</div>
+    <div id="enWrap">
+      <div class="lb"><span id="phName">秋 · 贮藏</span><span id="phTime">45.0s</span></div>
+      <div id="enBar"><i></i></div>
+    </div>
+    <div class="rt"><b id="score">0</b><span id="cnt">囊 0/4 · 埋 0</span></div>
+  </div>
+
+  <canvas id="cv"></canvas>
+  <div id="hint"></div>
+
+  <div id="ctl">
+    <button data-k="B" class="br" id="btnB">埋 藏<small>空格 / F</small></button>
+    <button data-k="M" class="fr">听 序<small>Q</small></button>
+    <button data-k="R">重 来<small>R</small></button>
+  </div>
+
+  <button id="snd" title="静音">🔊</button>
+
+  <div class="ov" id="ovStart">
+    <h1>藏冬 · 松果纪</h1>
+    <div class="sub">WINTER CACHE · 秋藏一季，雪落一夜</div>
+    <p>秋日的林间空地上散着五种坚果。<em>点一个格子，松鼠就自己绕过去。</em></p>
+    <p>捡进颊囊，再找个地方<em>埋进土里</em> —— 埋在哪，只有你记得。</p>
+    <p><em class="f">一夜大雪之后，所有土包都会被抹平。</em>你要凭记忆，把它们挖回来。</p>
+    <p class="keys">
+      <b>点格子</b>（手机 / 鼠标）松鼠自动绕开树石走过去 · 走到坚果上自动捡起<br>
+      <b>埋 藏</b>（空格 / F）在当前格埋一颗 —— <em>一格只能埋一颗</em><br>
+      <b>听 序</b>（Q）回放你埋下的音序：<em class="f">埋的顺序，就是冬天挖出来时听到的调子</em><br>
+      <b>冬章</b>：点格子 = 滑过去 = 挖开；<b>连中三发回一点配额</b><br>
+      <b>方向键 / WASD</b> 逐格挪动（桌面）
+    </p>
+    <div id="grid"></div>
+    <div class="best" id="startBest"></div>
+  </div>
+
+  <div class="ov hide" id="ovEnd">
+    <h1 id="endTitle">春分</h1>
+    <div class="sub" id="endSub"></div>
+    <div class="stars" id="endStars"></div>
+    <div class="stat" id="endStat"></div>
+    <div class="endline" id="endLine"></div>
+    <div>
+      <button class="btn solid" id="btnNext">下一关</button>
+      <button class="btn ghost" id="btnRetry">再藏一次</button>
+    </div>
+    <button class="btn ghost" id="btnMenu" style="margin-top:10px">选关</button>
+  </div>
+
+</div></div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function(){
+'use strict';
+var G = window.WinterCache, WC = window.WC;
+var STAGE_W = 480, STAGE_H = 870;
+
+var cv = document.getElementById('cv');
+var R = new WC.Render(cv);
+var st = null, li = 0, seed = 20260909, running = false, last = 0;
+var held = {dx:0, dy:0}, memo = {};
+
+/* ---------- 存档 ---------- */
+var SKEY = 'wintercache.v1';
+function load(){
+  try{ var d = JSON.parse(localStorage.getItem(SKEY)||'{}');
+    d.best = d.best||{}; d.unlocked = d.unlocked||1; d.trees = d.trees||0; d.mute = !!d.mute; return d; }
+  catch(e){ return {best:{},unlocked:1,trees:0,mute:false}; }
+}
+function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(SAVE)); }catch(e){} }
+var SAVE = load();
+
+/* ---------- 音效（五声音阶） ---------- */
+var AC = null, master = null, muted = SAVE.mute;
+function ac(){
+  if(AC) return AC;
+  var C = window.AudioContext||window.webkitAudioContext; if(!C) return null;
+  AC = new C(); master = AC.createGain(); master.gain.value = muted?0:0.5; master.connect(AC.destination);
+  return AC;
+}
+function tone(freq, dur, type, vol, delay){
+  var a = ac(); if(!a||muted) return;
+  var t0 = a.currentTime + (delay||0);
+  var o = a.createOscillator(), g = a.createGain();
+  o.type = type||'sine'; o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol||0.16, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.03);
+}
+function noise(dur, freq, vol, q){
+  var a = ac(); if(!a||muted) return;
+  var len = Math.max(1, Math.floor(a.sampleRate*dur));
+  var buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for(var i=0;i<len;i++) d[i] = (Math.random()*2-1)*(1-i/len);
+  var src = a.createBufferSource(); src.buffer = buf;
+  var bp = a.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=q||1.1;
+  var g = a.createGain(); g.gain.value = vol||0.10;
+  src.connect(bp); bp.connect(g); g.connect(master); src.start();
+}
+var PENT = [0,2,4,7,9];
+function pent(n){ var o = PENT[((n%5)+5)%5] + 12*Math.floor(n/5); return 261.63*Math.pow(2, o/12); }
+
+function sfxPick(){ tone(660, 0.14, 'sine', 0.07); noise(0.06, 1800, 0.03, 1.4); }
+function sfxBury(){ noise(0.20, 300, 0.075, 0.7); tone(150, 0.20, 'sine', 0.055); }
+function sfxHit(n){
+  var f = pent(n);
+  tone(f, 1.05, 'sine', 0.145); tone(f*2, 0.6, 'sine', 0.05); tone(f*3, 0.35, 'sine', 0.022);
+  noise(0.14, 1400, 0.035, 1.6);
+}
+function sfxMiss(){ noise(0.26, 260, 0.055, 0.8); tone(140, 0.24, 'sine', 0.04); }
+function sfxRecharge(){ tone(880, 0.5, 'sine', 0.10); tone(1320, 0.4, 'sine', 0.05); }
+function sfxSnow(){ noise(1.3, 520, 0.05, 0.5); tone(98, 1.1, 'sine', 0.06); }
+function sfxEnd(kind){
+  var seq = kind==='lost'||kind==='empty' ? [4,2,0] : [0,2,4,7,9];
+  for(var i=0;i<seq.length;i++) tone(pent(seq[i]), 1.2, 'sine', 0.10, i*0.17);
+  noise(0.5, 700, 0.035, 0.7);
+}
+function playMelody(){
+  if(!st || !st.buried.length) return;
+  for(var i=0;i<st.buried.length;i++) tone(pent(st.buried[i].order), 0.5, 'sine', 0.11, i*0.19);
+}
+function playEvents(evs){
+  for(var i=0;i<evs.length;i++){
+    var e = evs[i];
+    if(e.t==='pick') sfxPick();
+    else if(e.t==='bury') sfxBury();
+    else if(e.t==='hit') sfxHit(e.order||0);
+    else if(e.t==='miss') sfxMiss();
+    else if(e.t==='recharge') sfxRecharge();
+    else if(e.t==='snow') sfxSnow();
+    else if(e.t==='end') sfxEnd(e.kind);
+  }
+}
+
+/* ---------- 缩放 ---------- */
+function fit(){
+  var k = Math.min(window.innerWidth/STAGE_W, window.innerHeight/STAGE_H);
+  if(k > 1.18) k = 1.18;
+  document.getElementById('stage').style.transform = 'scale('+k+')';
+  var eff = Math.min((window.devicePixelRatio||1)*k, 2.4);
+  if(Math.abs(eff - (R.eff||0)) > 0.01){ R.resize(eff); if(st) R.bake(st, keyOf()); }
+}
+window.addEventListener('resize', fit);
+
+/* ---------- HUD ---------- */
+function keyOf(){ return li+'_'+seed; }
+function syncHud(){
+  if(memo.lv!==li){ memo.lv=li; document.getElementById('lvName').textContent = G.LEVELS[li].name; }
+  var sc = st.result ? st.result.score : scoreNow();
+  if(memo.score!==sc){ memo.score=sc; document.getElementById('score').textContent = sc; }
+  var c = '囊 '+st.pouch.length+'/'+st.L.cap+' · 埋 '+st.buried.length
+        + (st.phase==='winter'||st.phase==='end' ? ' · 回 '+st.found : '')
+        + (st.phase==='winter' ? ' · 锹 '+st.digLeft : '');
+  if(memo.c!==c){ memo.c=c; document.getElementById('cnt').textContent = c; }
+  var ph = st.phase==='autumn' ? '秋 · 贮藏' : st.phase==='snow' ? '一夜 · 落雪'
+         : st.phase==='winter' ? '冬 · 寻回' : '春 · 收工';
+  if(memo.ph!==ph){ memo.ph=ph; document.getElementById('phName').textContent = ph; }
+  var tt = st.phase==='snow' ? '—' : (Math.max(0,st.timeLeft)).toFixed(1)+'s';
+  if(memo.tt!==tt){ memo.tt=tt; document.getElementById('phTime').textContent = tt; }
+  var ma = (st.phase==='autumn'||st.phase==='snow') ? st.L.at : st.L.wt;
+  var pct = st.phase==='end' ? 0 : Math.max(0, Math.min(1, st.timeLeft/ma))*100;
+  var e = Math.round(pct);
+  if(memo.en!==e){ memo.en=e; document.getElementById('enBar').firstChild.style.width = e+'%'; }
+  var bt = st.phase==='winter' ? '挖 开' : '埋 藏';
+  if(memo.bt!==bt){ memo.bt=bt; document.querySelector('#btnB').firstChild.nodeValue = bt; }
+}
+function scoreNow(){
+  if(!st) return 0;
+  var s=0,i;
+  for(i=0;i<st.buried.length;i++) if(st.buried[i].found) s += G.KINDS[st.buried[i].k].score;
+  var sp=0; for(i=0;i<st.buried.length;i++) if(!st.buried[i].found) sp++;
+  return s + sp*5;
+}
+function hint(txt, ms){
+  var h = document.getElementById('hint'); h.textContent = txt; h.classList.add('show');
+  clearTimeout(hint._t); hint._t = setTimeout(function(){ h.classList.remove('show'); }, ms||2600);
+}
+function show(id){ document.getElementById(id).classList.remove('hide'); }
+function hide(id){ document.getElementById(id).classList.add('hide'); }
+
+function buildGrid(){
+  var gEl = document.getElementById('grid'); gEl.innerHTML='';
+  for(var i=0;i<G.LEVELS.length;i++){
+    (function(i){
+      var b = document.createElement('button');
+      var best = SAVE.best[i], locked = (i+1) > SAVE.unlocked;
+      b.innerHTML = '<span>'+G.LEVELS[i].name.replace(' · ','')+'</span><i>'
+        + (best?'★'.repeat(best.stars):(locked?'·':'')) + '</i><small>'+(best?best.score:'-')+'</small>';
+      b.disabled = locked;
+      b.onclick = function(){ start(i); };
+      gEl.appendChild(b);
+    })(i);
+  }
+  var tot=0,n=0;
+  for(var k in SAVE.best){ tot+=SAVE.best[k].score; n++; }
+  document.getElementById('startBest').textContent =
+    (n ? ('已过 '+n+' / '+G.LEVELS.length+' 关 · 累计 '+tot+' 分') : '尚未起藏')
+    + ' · 林地 '+SAVE.trees+' 株';
+}
+
+function start(i){
+  li = i; st = G.newState(li, seed);
+  R.forest = SAVE.trees;
+  R.bake(st, keyOf()); R.parts.length=0; R.texts.length=0; R.shake=0; R.flash=0;
+  memo = {lv:-1,score:-1,c:'',ph:'',tt:'',en:-1,bt:''};
+  held.dx=0; held.dy=0;
+  hide('ovStart'); hide('ovEnd'); running = true;
+  syncHud();
+  hint('点一个格子，松鼠会自己绕过去 · 走到坚果上自动捡起', 3400);
+  setTimeout(function(){ if(running && st && st.phase==='autumn' && !st.buried.length)
+    hint('捡满或想停手时，按【埋 藏】把它埋进脚下的土里', 3200); }, 3600);
+}
+
+var END_TXT = {
+  clear: {t:'春分', s:'雪化了一层', l:'你忘掉的那几颗，替你活着。'},
+  lost:  {t:'深雪', s:'一无所获',   l:'雪下得很厚 —— 它们认得你明年再来。'},
+  empty: {t:'空囊', s:'什么也没藏', l:'空手上路，也是一种过冬。'}
+};
+function finish(){
+  running = false;
+  var r = st.result, e = END_TXT[r.kind]||END_TXT.lost;
+  var star = G.starsOf(li, r);
+  document.getElementById('endTitle').textContent = e.t;
+  document.getElementById('endSub').textContent = e.s;
+  document.getElementById('endStars').textContent =
+    '★★★'.slice(0,star) + '☆☆☆'.slice(0,3-star);
+  var rows = [
+    ['埋下', r.buried+' 颗'],
+    ['寻回', r.found+' 颗'],
+    ['遗忘 · 成树', r.sprouts+' 株'],
+    ['挖空', r.miss+' 次'],
+    ['最长连中', r.bestCombo],
+    ['本局得分', r.score]
+  ];
+  document.getElementById('endStat').innerHTML =
+    rows.map(function(x){ return '<span>'+x[0]+'</span><b>'+x[1]+'</b>'; }).join('');
+  document.getElementById('endLine').textContent = e.l;
+
+  SAVE.trees += r.sprouts;
+  var b = SAVE.best[li];
+  if(!b || r.score > b.score) SAVE.best[li] = {score:r.score, stars:star};
+  else if(star > (b.stars||0)) SAVE.best[li].stars = star;
+  if(star >= 1 && li+1 < G.LEVELS.length) SAVE.unlocked = Math.max(SAVE.unlocked, li+2);
+  save(); R.forest = SAVE.trees;
+  document.getElementById('btnNext').style.display =
+    (star >= 1 && li+1<G.LEVELS.length) ? '' : 'none';
+  show('ovEnd');
+}
+
+/* ---------- 输入 ---------- */
+var KDIR = {
+  'ArrowLeft':[-1,0],'KeyA':[-1,0],'a':[-1,0],'A':[-1,0],
+  'ArrowRight':[1,0],'KeyD':[1,0],'d':[1,0],'D':[1,0],
+  'ArrowUp':[0,-1],'KeyW':[0,-1],'w':[0,-1],'W':[0,-1],
+  'ArrowDown':[0,1],'KeyS':[0,1],'s':[0,1],'S':[0,1]
+};
+function kcode(e){ return e.code || e.key || ''; }
+window.addEventListener('keydown', function(e){
+  var c = kcode(e);
+  var d = KDIR[c] || KDIR[e.key];
+  if(d){ e.preventDefault(); held.dx=d[0]; held.dy=d[1]; return; }
+  if(c==='Space'||c===' '||c==='KeyF'||c==='f'||c==='F'){ e.preventDefault(); doMain(); return; }
+  if(c==='KeyQ'||c==='q'||c==='Q'){ playMelody(); return; }
+  if(c==='KeyR'||c==='r'||c==='R'){ if(running) start(li); return; }
+});
+window.addEventListener('keyup', function(e){
+  var c = kcode(e); var d = KDIR[c] || KDIR[e.key];
+  if(d && d[0]===held.dx && d[1]===held.dy){ held.dx=0; held.dy=0; }
+});
+window.addEventListener('blur', function(){ held.dx=0; held.dy=0; });
+
+Array.prototype.forEach.call(document.querySelectorAll('#ctl button'), function(b){
+  var k = b.getAttribute('data-k');
+  b.addEventListener('pointerdown', function(ev){
+    ev.preventDefault(); b.classList.add('on');
+    if(k==='B') doMain();
+    else if(k==='M') playMelody();
+    else if(k==='R'){ if(running) start(li); }
+  });
+  function off(){ b.classList.remove('on'); }
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+
+cv.addEventListener('pointerdown', function(e){
+  if(!running || !st) return;
+  var rect = cv.getBoundingClientRect();
+  var mx = (e.clientX - rect.left) / rect.width * WC.Render.W;
+  var my = (e.clientY - rect.top) / rect.height * WC.Render.H;
+  var cell = R.cellAt(mx, my);
+  if(cell < 0) return;
+  G.gotoCell(st, cell);
+});
+
+function doMain(){
+  if(!running || !st) return;
+  if(st.phase==='autumn'){
+    if(!G.bury(st)){
+      if(!st.pouch.length) hint('颊囊是空的 —— 先去捡点坚果', 1800);
+      else if(st.act || st.sq.path.length) hint('等松鼠站稳再埋', 1400);
+      else hint('这一格埋不了 —— 换一处空地', 1600);
+    }
+  } else if(st.phase==='winter'){
+    if(!G.digHere(st) && st.digLeft<=0) hint('锹用完了', 1600);
+  }
+}
+
+document.getElementById('btnRetry').onclick = function(){ start(li); };
+document.getElementById('btnNext').onclick = function(){ start(Math.min(G.LEVELS.length-1, li+1)); };
+document.getElementById('btnMenu').onclick = function(){ running=false; buildGrid(); hide('ovEnd'); show('ovStart'); };
+document.getElementById('snd').onclick = function(){
+  muted = !muted; SAVE.mute = muted; save();
+  if(master) master.gain.value = muted?0:0.5;
+  this.textContent = muted?'🔇':'🔊';
+};
+document.getElementById('snd').textContent = muted?'🔇':'🔊';
+
+/* ---------- 主循环 ---------- */
+function frame(ts){
+  if(!last) last = ts;
+  var dt = (ts - last)/1000; last = ts;
+  if(!(dt>0)) dt = 0;
+  if(dt>0.05) dt = 0.05;
+
+  if(running && st){
+    if((held.dx||held.dy) && !st.act && !st.sq.path.length) G.stepDir(st, held.dx, held.dy);
+    G.update(st, dt);
+    playEvents(st.events);       // ① 音效
+    R.feed(st);                  // ② 粒子（清空 events）
+    R.draw(st, dt);              // ③ 渲染
+    syncHud();
+    if(st.phase === 'end') finish();
+  } else if(st){
+    R.step(dt); R.draw(st, dt);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 启动 ---------- */
+buildGrid();
+var k0 = Math.min(window.innerWidth/STAGE_W, window.innerHeight/STAGE_H);
+if(k0 > 1.18) k0 = 1.18;
+R.resize(Math.min((window.devicePixelRatio||1)*k0, 2.4));
+st = G.newState(0, seed);
+R.forest = SAVE.trees;
+R.bake(st, keyOf());
+fit();
+requestAnimationFrame(frame);
+
+window.__game = {
+  get st(){ return st; }, G: G, R: R,
+  start: start, isRunning: function(){ return running; },
+  bury: function(){ return G.bury(st); },
+  dig: function(){ return G.digHere(st); },
+  goto: function(c){ return G.gotoCell(st, c); },
+  step: function(dx,dy){ return G.stepDir(st, dx, dy); },
+  setLevel: function(i){ li=i; }, getLevel: function(){ return li; },
+  cellAt: function(x,y){ return R.cellAt(x,y); }
+};
+})();
+</script>
+</body>
+</html>
