@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>彩环穿行 · chromaring</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0b0f1a;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; justify-content: center; align-items: center;
+  }
+  #stage {
+    display: block;
+    background: #0b0f1a;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  .corner {
+    position: fixed;
+    bottom: 8px; right: 12px;
+    color: rgba(255,255,255,0.3);
+    font-size: 10px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="corner">chromaring · 261</div>
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  const canvas = document.getElementById('stage');
+
+  // 共享 storage 桩（用于非浏览器环境测试）
+  const storage = (function(){
+    try { return window.localStorage; } catch(e){ return null; }
+  })();
+
+  const game = GameLib.createGame({ storage: storage });
+  const render = RenderLib.createRender(canvas, game);
+
+  // 简易 WebAudio 五声音阶音效（按需触发，避免噪音）
+  const audio = (function(){
+    let ctx = null, muted = false;
+    function getCtx(){
+      if (ctx) return ctx;
+      try{
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+      }catch(e){ return null; }
+      return ctx;
+    }
+    function ensure(){
+      const c = getCtx();
+      if (c && c.state === 'suspended' && c.resume){
+        try{ c.resume(); }catch(e){}
+      }
+      return c;
+    }
+    function beep(freq, dur, type, vol){
+      if (muted) return;
+      const c = ensure();
+      if (!c) return;
+      try{
+        const t = c.currentTime;
+        const osc = c.createOscillator();
+        const g = c.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(vol == null ? 0.10 : vol, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g); g.connect(c.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.03);
+      }catch(e){}
+    }
+    return {
+      get muted(){ return muted; },
+      setMute(v){ muted = !!v; },
+      switch: function(){ beep(880 + Math.random()*120, 0.06, 'triangle', 0.08); },
+      pass: function(streak){
+        // 每次穿过圆环：清脆叮 + 随连击升调
+        const base = 880 + Math.min(streak - 1, 8) * 80;
+        beep(base, 0.08, 'sine', 0.12);
+      },
+      milestone: function(){
+        // 里程碑：上行三连音
+        beep(1046.5, 0.08, 'sine', 0.10);
+        setTimeout(() => beep(1318.5, 0.08, 'sine', 0.10), 60);
+        setTimeout(() => beep(1568, 0.10, 'sine', 0.10), 120);
+      },
+      crash: function(){
+        beep(180, 0.32, 'sawtooth', 0.16);
+        beep(120, 0.4, 'sine', 0.10);
+      },
+      start: function(){ beep(660, 0.10, 'sine', 0.10); }
+    };
+  })();
+
+  // 暴露给自动化测试
+  window.__CHROMARING = { game: game, render: render, audio: audio };
+
+  let lastBallColor = game.state.ballColorIdx;
+  let lastScore = 0;
+  let lastPhase = game.state.phase;
+
+  function handleAction(){
+    const ph = game.state.phase;
+    if (ph === 'idle'){
+      game.start();
+      audio.start();
+      return;
+    }
+    if (ph === 'dead'){
+      // 死亡后给一点点缓冲（约 0.5 秒），免得连点误触
+      if (game.state.elapsed - game.state.deadAt > 25){
+        game.start();
+        audio.start();
+      }
+      return;
+    }
+    // play：唯一动词——切色
+    const ok = game.switchColor();
+    if (ok) audio.switch();
+  }
+
+  // 桌面：鼠标点击
+  canvas.addEventListener('mousedown', function(e){
+    e.preventDefault();
+    handleAction();
+  });
+
+  // 移动端：触摸
+  canvas.addEventListener('touchstart', function(e){
+    e.preventDefault();
+    handleAction();
+  }, { passive: false });
+
+  // 键盘：空格 / Enter / → / D
+  window.addEventListener('keydown', function(e){
+    if (e.code === 'Space' || e.code === 'Enter' ||
+        e.code === 'ArrowRight' || e.code === 'KeyD'){
+      e.preventDefault();
+      handleAction();
+    } else if (e.code === 'KeyM'){
+      audio.setMute(!audio.muted);
+    }
+  });
+
+  // 窗口大小适配
+  function onResize(){ render.fitCanvas(); }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+
+  // 监听状态变化触发音效/里程碑
+  function watchState(){
+    if (game.state.phase === 'play'){
+      if (game.state.score !== lastScore){
+        // 每次分数变化=穿过一个圆环
+        if (game.state.score > lastScore){
+          audio.pass(game.state.streak);
+          // 里程碑：每 10 环
+          if (game.state.score > 0 && game.state.score % 10 === 0){
+            audio.milestone();
+          }
+        }
+        lastScore = game.state.score;
+      }
+    }
+    if (game.state.phase !== lastPhase){
+      if (lastPhase === 'play' && game.state.phase === 'dead'){
+        audio.crash();
+      }
+      lastPhase = game.state.phase;
+    }
+    requestAnimationFrame(watchState);
+  }
+
+  // 主循环
+  function loop(){
+    game.tick();
+    render.render();
+    requestAnimationFrame(loop);
+  }
+
+  // 启动
+  render.fitCanvas();
+  loop();
+  watchState();
+})();
+</script>
+</body>
+</html>
