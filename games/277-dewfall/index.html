@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0D1611">
+<title>坠露 · 落进那片绿</title>
+<style>
+  :root{
+    --na:#5C8A4E;          /* 那爱绿 */
+    --na-lit:#8AB36A;
+    --na-hi:#A8C88A;
+    --ink:#E8F5DC;
+    --ink-dim:rgba(232,245,220,.62);
+    --bg:#0D1611;
+    --glass:rgba(232,245,220,.09);
+    --glass-line:rgba(232,245,220,.22);
+    --warm:#F0C98A;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
+    color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+
+  /* ---- 玻璃 HUD（DOM + backdrop-filter：这类毛玻璃交给 CSS 做，成本远低于 Canvas）---- */
+  .hud{position:fixed;pointer-events:none;z-index:5}
+  .glass{background:var(--glass);border:1px solid var(--glass-line);border-radius:16px;
+    backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.16),0 6px 24px rgba(0,0,0,.28)}
+
+  #topL{top:max(12px,env(safe-area-inset-top));left:12px;padding:9px 13px 10px;min-width:158px}
+  .depth{font-size:26px;font-weight:700;line-height:1;letter-spacing:.5px}
+  .depth small{font-size:12px;font-weight:400;opacity:.62;margin-left:3px}
+  .bar{margin-top:7px;height:4px;border-radius:3px;background:rgba(232,245,220,.14);overflow:hidden}
+  .bar i{display:block;height:100%;width:0%;border-radius:3px;
+    background:linear-gradient(90deg,var(--na),var(--warm));transition:width .12s linear}
+  .barlab{margin-top:5px;font-size:10px;color:var(--ink-dim);letter-spacing:.4px}
+
+  #topR{top:max(12px,env(safe-area-inset-top));right:12px;padding:9px 13px 10px;text-align:right;min-width:104px}
+  .score{font-size:22px;font-weight:700;line-height:1}
+  .best{font-size:10px;color:var(--ink-dim);margin-top:6px;letter-spacing:.4px}
+
+  #botL{left:12px;bottom:max(12px,env(safe-area-inset-bottom));padding:9px 13px 11px;width:172px}
+  .volrow{display:flex;align-items:baseline;gap:7px;font-size:10px;color:var(--ink-dim);letter-spacing:.4px}
+  .volrow b{font-size:13px;color:var(--ink);font-weight:700}
+  .vbar{margin-top:7px;height:9px;border-radius:6px;background:rgba(232,245,220,.13);overflow:hidden;position:relative}
+  .vbar i{display:block;height:100%;width:55%;border-radius:6px;
+    background:linear-gradient(90deg,#CFEFE2,#8AB36A);transition:width .1s linear}
+  .vbar u{position:absolute;inset:0;background:
+    repeating-linear-gradient(90deg,transparent 0 24.5%,rgba(13,22,17,.55) 24.5% 25%)}
+  .hint{margin-top:6px;font-size:9.5px;color:var(--ink-dim);letter-spacing:.3px}
+
+  #combo{left:50%;transform:translateX(-50%);bottom:20%;font-size:30px;font-weight:700;
+    opacity:0;letter-spacing:1px;text-shadow:0 0 18px rgba(232,245,220,.5);transition:opacity .18s}
+
+  /* ---- 遮罩 ---- */
+  .veil{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:radial-gradient(ellipse at 50% 40%,rgba(20,38,26,.82),rgba(6,12,9,.94));
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .veil.hide{display:none}
+  .card{max-width:400px;width:100%;padding:26px 24px 22px;border-radius:22px;text-align:center;
+    background:rgba(232,245,220,.07);border:1px solid var(--glass-line);
+    backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.2),0 20px 60px rgba(0,0,0,.45)}
+  h1{margin:0 0 4px;font-size:27px;letter-spacing:3px;font-weight:700}
+  .sub{font-size:12px;color:var(--ink-dim);letter-spacing:2px;margin-bottom:16px}
+  .core{font-size:13.5px;line-height:1.85;color:var(--ink);opacity:.9;margin:0 0 16px;letter-spacing:.5px}
+  .plays{text-align:left;font-size:11.5px;line-height:2;color:var(--ink-dim);
+    margin:0 auto 18px;max-width:320px;letter-spacing:.3px}
+  .plays b{color:var(--na-hi);font-weight:700}
+  .plays i{font-style:normal;color:var(--ink)}
+  button{pointer-events:auto;font:inherit;font-size:14px;font-weight:700;letter-spacing:3px;
+    padding:12px 34px;border-radius:14px;color:#12200F;cursor:pointer;
+    background:linear-gradient(180deg,var(--na-hi),var(--na));border:1px solid rgba(232,245,220,.5);
+    box-shadow:0 6px 20px rgba(92,138,78,.38),inset 0 1px 0 rgba(255,255,255,.5);
+    transition:transform .1s,box-shadow .2s}
+  button:hover{transform:translateY(-1px);box-shadow:0 9px 26px rgba(92,138,78,.5),inset 0 1px 0 rgba(255,255,255,.6)}
+  button:active{transform:translateY(1px)}
+  .ghost{margin-left:8px;background:rgba(232,245,220,.08);color:var(--ink-dim);
+    border:1px solid var(--glass-line);box-shadow:none;font-weight:400;letter-spacing:1px}
+  .ghost:hover{color:var(--ink);box-shadow:none}
+
+  /* 结算 */
+  .verdict{font-size:12px;letter-spacing:3px;color:var(--warm);margin-bottom:6px}
+  .bigdep{font-size:44px;font-weight:700;line-height:1;margin-bottom:2px}
+  .bigdep small{font-size:15px;font-weight:400;opacity:.6;margin-left:4px}
+  .oneline{font-size:13px;line-height:1.8;margin:12px 0 18px;opacity:.9;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+  .cell{padding:9px 6px;border-radius:12px;background:rgba(232,245,220,.06);
+    border:1px solid rgba(232,245,220,.12)}
+  .cell u{display:block;text-decoration:none;font-size:9.5px;color:var(--ink-dim);letter-spacing:.6px;margin-bottom:4px}
+  .cell b{font-size:17px;font-weight:700}
+  .newbest{font-size:11px;color:var(--warm);letter-spacing:2px;margin-bottom:10px;min-height:14px}
+
+  #sound{position:fixed;z-index:9;right:12px;bottom:max(12px,env(safe-area-inset-bottom));
+    width:38px;height:38px;border-radius:12px;pointer-events:auto;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:15px;padding:0;
+    background:var(--glass);border:1px solid var(--glass-line);color:var(--ink-dim);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:none}
+  #sound:hover{color:var(--ink)}
+  @media (max-width:380px){
+    h1{font-size:23px}.card{padding:22px 18px 18px}.bigdep{font-size:38px}
+    #topL{min-width:140px}.depth{font-size:23px}#botL{width:150px}
+  }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="cv"></canvas></div>
+
+<div class="hud glass" id="topL">
+  <div class="depth"><span id="dep">0</span><small>米</small></div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="barlab" id="barlab">归途 0 / 340 米</div>
+</div>
+
+<div class="hud glass" id="topR">
+  <div class="score" id="score">0</div>
+  <div class="best" id="best">最佳 —</div>
+</div>
+
+<div class="hud glass" id="botL">
+  <div class="volrow"><span>水</span><b id="volp">55%</b><span id="mul">×2.9</span></div>
+  <div class="vbar"><i id="vfill"></i><u></u></div>
+  <div class="hint">越大越快越值钱 · 也越难过缝</div>
+</div>
+
+<div class="hud" id="combo"></div>
+<div id="sound" title="声音">♪</div>
+
+<div class="veil" id="veilStart">
+  <div class="card">
+    <h1>坠露</h1>
+    <div class="sub">落 进 那 片 绿</div>
+    <p class="core">你是叶尖凝成的那一滴。<br>往下穿过一层层叶子，回到土里去。</p>
+    <div class="plays">
+      <div><b>移动</b> <i>鼠标 / 手指左右拖动，或 ← →</i></div>
+      <div><b>穿缝</b> <i>从叶缝正中穿过＝完美，攒连击</i></div>
+      <div><b>喝水</b> <i>路上亮着的小水洼，顺路喝一口</i></div>
+      <div><b>擦叶</b> <i>只是蹭掉一点，正面撞上会被托住</i></div>
+      <div><b>到家</b> <i>水渗尽、或走完 340 米，都算到家</i></div>
+    </div>
+    <button id="btnStart">落 下 去</button>
+  </div>
+</div>
+
+<div class="veil hide" id="veilOver">
+  <div class="card">
+    <div class="verdict" id="verdict">到 家 了</div>
+    <div class="bigdep"><span id="oDep">0</span><small>米</small></div>
+    <div class="newbest" id="newbest"></div>
+    <p class="oneline" id="oneline"></p>
+    <div class="grid">
+      <div class="cell"><u>得 分</u><b id="oScore">0</b></div>
+      <div class="cell"><u>最长连击</u><b id="oCombo">0</b></div>
+      <div class="cell"><u>穿 过</u><b id="oLayers">0</b> 层</div>
+      <div class="cell"><u>最重一滴</u><b id="oVol">0%</b></div>
+    </div>
+    <button id="btnAgain">再 落 一 次</button>
+    <button class="ghost" id="btnHome">回主页</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.DewGame, R = window.DewRender;
+  var CFG = G.CFG;
+  var cv = document.getElementById('cv');
+  var game = G.createGame({ viewH: 640 });
+  var S = game.state;
+  var rend = R.create(game, cv);
+
+  // ---------- localStorage ----------
+  var KEY = 'dewfall.best.v1';
+  var best = { depth: 0, score: 0, combo: 0, vol: 0, homes: 0 };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var o = JSON.parse(raw); for (var k in best) if (typeof o[k] === 'number') best[k] = o[k]; }
+  } catch (e) {}
+  function saveBest() { try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (e) {} }
+  function paintBest() {
+    document.getElementById('best').textContent =
+      best.depth ? ('最佳 ' + best.depth + ' 米 · ' + best.score + ' 分') : '最佳 —';
+  }
+  paintBest();
+
+  // ---------- WebAudio 五声音阶（宫商角徵羽）----------
+  var AC = null, master = null, muted = false;
+  function audio() {
+    if (AC) return AC;
+    try {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      AC = new Ctor();
+      master = AC.createGain(); master.gain.value = 0.30; master.connect(AC.destination);
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  function resumeAudio() { var a = audio(); if (a && a.state === 'suspended') a.resume(); }
+  function midi2f(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  // 清透的「水滴」音：正弦基音 + 高八度泛音，快速衰减
+  function plink(midi, vol, dur) {
+    if (muted) return;
+    var a = audio(); if (!a) return;
+    var t = a.currentTime, f = midi2f(midi);
+    dur = dur || 0.42; vol = vol || 0.5;
+    [[1, 1, dur], [2, 0.32, dur * 0.6], [3.01, 0.12, dur * 0.35]].forEach(function (h) {
+      var o = a.createOscillator(), gn = a.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(f * h[0], t);
+      // 起音时轻微上滑，像水滴绷住又落下
+      o.frequency.exponentialRampToValueAtTime(f * h[0] * 1.012, t + 0.05);
+      gn.gain.setValueAtTime(0, t);
+      gn.gain.linearRampToValueAtTime(vol * h[1], t + 0.008);
+      gn.gain.exponentialRampToValueAtTime(0.0001, t + h[2]);
+      o.connect(gn); gn.connect(master); o.start(t); o.stop(t + h[2] + 0.02);
+    });
+  }
+  // 闷响：撞叶 / 撞枯枝
+  function thud(freq, vol, dur) {
+    if (muted) return;
+    var a = audio(); if (!a) return;
+    var t = a.currentTime;
+    var o = a.createOscillator(), gn = a.createGain(), lp = a.createBiquadFilter();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(freq, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.55, t + (dur || 0.2));
+    lp.type = 'lowpass'; lp.frequency.value = 900;
+    gn.gain.setValueAtTime(0, t);
+    gn.gain.linearRampToValueAtTime(vol || 0.3, t + 0.01);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.2));
+    o.connect(lp); lp.connect(gn); gn.connect(master); o.start(t); o.stop(t + (dur || 0.2) + 0.02);
+  }
+  // 噪声音：溅水
+  function hiss(vol, dur) {
+    if (muted) return;
+    var a = audio(); if (!a) return;
+    var t = a.currentTime, n = Math.floor(a.sampleRate * (dur || 0.14));
+    var buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.4);
+    var src = a.createBufferSource(); src.buffer = buf;
+    var bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 1.1;
+    var gn = a.createGain(); gn.gain.value = vol || 0.16;
+    src.connect(bp); bp.connect(gn); gn.connect(master); src.start(t);
+  }
+  document.getElementById('sound').addEventListener('click', function () {
+    muted = !muted;
+    this.textContent = muted ? '✕' : '♪';
+    this.style.color = muted ? 'rgba(232,245,220,.3)' : '';
+    if (!muted) { resumeAudio(); plink(72, 0.34, 0.3); }
+  });
+
+  // ---------- HUD ----------
+  var elDep = document.getElementById('dep'), elBar = document.getElementById('barfill'),
+      elBarLab = document.getElementById('barlab'), elScore = document.getElementById('score'),
+      elVolp = document.getElementById('volp'), elMul = document.getElementById('mul'),
+      elVfill = document.getElementById('vfill'), elCombo = document.getElementById('combo');
+  var lastCombo = 0, comboTimer = 0;
+  var pDep = -1, pScore = -1, pVol = -1;
+
+  function paint() {
+    var d = Math.floor(S.depth);
+    if (d !== pDep) {                      // 脏检查：避免每帧写 DOM
+      pDep = d;
+      elDep.textContent = d;
+      var pct = Math.min(100, S.depth / CFG.HOME_DEPTH * 100);
+      elBar.style.width = pct.toFixed(1) + '%';
+      elBarLab.textContent = '归途 ' + d + ' / ' + CFG.HOME_DEPTH + ' 米';
+    }
+    if (S.score !== pScore) { pScore = S.score; elScore.textContent = S.score; }
+    var vp = Math.round(S.drop.vol * 100);
+    if (vp !== pVol) {
+      pVol = vp;
+      elVolp.textContent = vp + '%';
+      elMul.textContent = '×' + G.multOf(S.drop.vol).toFixed(1);
+      elVfill.style.width = Math.max(0, vp) + '%';
+    }
+    if (S.combo !== lastCombo) {
+      lastCombo = S.combo;
+      if (S.combo >= 2) {
+        elCombo.textContent = '连 ' + S.combo;
+        elCombo.style.opacity = '1';
+        comboTimer = 1.1;
+      }
+    }
+  }
+
+  // ---------- 事件 → 音效 ----------
+  function pumpAudio(evs) {
+    for (var i = 0; i < evs.length; i++) {
+      var e = evs[i];
+      switch (e.t) {
+        case 'note': plink(e.midi, 0.42, 0.5); break;
+        case 'graze': hiss(0.13, 0.12); thud(190, 0.16, 0.16); break;
+        case 'hit': hiss(0.2, 0.18); thud(120, 0.3, 0.26); break;
+        case 'branch': hiss(0.24, 0.22); thud(78, 0.4, 0.36); break;
+        case 'absorb': plink(72 + (S.poolsEaten % 5) * 2, 0.34, 0.34); break;
+        case 'perfect': break;                       // note 事件已覆盖
+        case 'flower': plink(79, 0.3, 0.7); break;
+        case 'soak': plink(48, 0.4, 1.1); break;
+        case 'over':
+          if (e.reason === 'home') { plink(60, 0.4, 0.6); setTimeout(function () { plink(67, 0.38, 0.8); }, 130); setTimeout(function () { plink(72, 0.36, 1.2); }, 280); }
+          else { plink(55, 0.3, 0.9); }
+          break;
+      }
+    }
+    evs.length = 0;
+  }
+
+  // ---------- 开始 / 重开 / 结算 ----------
+  var veilStart = document.getElementById('veilStart'), veilOver = document.getElementById('veilOver');
+
+  function startGame() {
+    resumeAudio();
+    game.reset(); game.start();
+    rend.clear();
+    lastCombo = 0; comboTimer = 0; elCombo.style.opacity = '0';
+    pDep = -1; pScore = -1; pVol = -1;
+    veilStart.classList.add('hide'); veilOver.classList.add('hide');
+  }
+
+  var LINES_DRY = [
+    '渗进土里了。<br>往下走，也是回家。',
+    '水用完了，路走完了。<br>都算到了。',
+    '最后一点也给了叶子。<br>这一趟不算白走。'
+  ];
+  var LINES_HOME = [
+    '到家了。<br>土是暖的。',
+    '落地这一下，<br>比飞着踏实。',
+    '一路往下，<br>刚好落进该去的地方。'
+  ];
+
+  function endGame() {
+    var s = game.summary();
+    var isHome = s.reason === 'home';
+    document.getElementById('verdict').textContent = isHome ? '到 家 了' : '渗 进 土 里';
+    document.getElementById('oDep').textContent = s.depth;
+    document.getElementById('oScore').textContent = s.score;
+    document.getElementById('oCombo').textContent = s.maxCombo;
+    document.getElementById('oLayers').textContent = s.layers;
+    document.getElementById('oVol').textContent = Math.round(s.maxVol * 100) + '%';
+    document.getElementById('oneline').innerHTML = isHome
+      ? LINES_HOME[Math.floor(Math.random() * LINES_HOME.length)]
+      : LINES_DRY[Math.floor(Math.random() * LINES_DRY.length)];
+
+    var nb = [];
+    if (s.depth > best.depth) { best.depth = s.depth; nb.push('最深'); }
+    if (s.score > best.score) { best.score = s.score; nb.push('最高分'); }
+    if (s.maxCombo > best.combo) { best.combo = s.maxCombo; nb.push('最长连击'); }
+    if (s.maxVol > best.vol) { best.vol = s.maxVol; }
+    if (isHome) { best.homes++; if (best.homes === 1) nb.push('第一次到家'); }
+    document.getElementById('newbest').textContent = nb.length ? '★ 新纪录 · ' + nb.join(' · ') : '';
+    saveBest(); paintBest();
+
+    setTimeout(function () { veilOver.classList.remove('hide'); }, 620);
+  }
+
+  document.getElementById('btnStart').addEventListener('click', startGame);
+  document.getElementById('btnAgain').addEventListener('click', startGame);
+  document.getElementById('btnHome').addEventListener('click', function () { window.location.href = '../index.html'; });
+
+  // ---------- 输入 ----------
+  function toWorldX(clientX) {
+    var r = cv.getBoundingClientRect();
+    return (clientX - r.left) / r.width * CFG.VW;
+  }
+  var pointerDown = false;
+  cv.addEventListener('mousemove', function (e) {
+    if (S.phase !== 'play') return;
+    game.setTargetX(toWorldX(e.clientX));
+  });
+  cv.addEventListener('touchstart', function (e) {
+    e.preventDefault(); resumeAudio();
+    if (S.phase !== 'play') return;
+    pointerDown = true;
+    game.setTargetX(toWorldX(e.touches[0].clientX));
+  }, { passive: false });
+  cv.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    if (S.phase !== 'play') return;
+    game.setTargetX(toWorldX(e.touches[0].clientX));
+  }, { passive: false });
+  cv.addEventListener('touchend', function (e) { e.preventDefault(); pointerDown = false; }, { passive: false });
+
+  var keyL = false, keyR = false;
+  function applyKeys() {
+    if (keyL === keyR) game.setDir(0);
+    else game.setDir(keyL ? -1 : 1);
+  }
+  window.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keyL = true; applyKeys(); e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { keyR = true; applyKeys(); e.preventDefault(); }
+    else if (k === ' ' || k === 'Enter') {
+      e.preventDefault(); resumeAudio();
+      if (S.phase === 'ready' || S.phase === 'over') startGame();
+    } else if (k === 'm' || k === 'M') { document.getElementById('sound').click(); }
+  });
+  window.addEventListener('keyup', function (e) {
+    var k = e.key;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keyL = false; applyKeys(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { keyR = false; applyKeys(); }
+  });
+  window.addEventListener('blur', function () { keyL = keyR = false; applyKeys(); });
+
+  window.addEventListener('resize', function () { rend.resize(); });
+  window.addEventListener('orientationchange', function () { setTimeout(function () { rend.resize(); }, 220); });
+
+  // ---------- 主循环 ----------
+  var last = 0, fpsAcc = 0, fpsN = 0, worstFrame = 0;
+  function frame(ts) {
+    if (!last) last = ts;
+    var dt = (ts - last) / 1000;
+    last = ts;
+    if (dt > 0.05) dt = 0.05;      // 切后台回来别让世界瞬移
+    if (dt > 0) {
+      var t0 = performance.now();
+      var wasOver = S.over;
+      game.update(dt);
+      // 事件只 drain 一次，音效与特效共用同一批
+      var evs = game.drain();
+      pumpAudio(evs);
+      if (!wasOver && S.over) endGame();
+      rend.draw(dt, evs);
+      paint();
+      var cost = performance.now() - t0;
+      if (cost > worstFrame) worstFrame = cost;
+      fpsAcc += dt; fpsN++;
+    }
+    if (comboTimer > 0) {
+      comboTimer -= dt;
+      if (comboTimer <= 0) elCombo.style.opacity = '0';
+    }
+    requestAnimationFrame(frame);
+  }
+
+  rend.resize();
+  requestAnimationFrame(frame);
+
+  // 探针钩子（浏览器自动化测试用）
+  window.__DEW = {
+    game: game, render: rend,
+    state: function () { return S; },
+    start: startGame,
+    over: function () { return S.over; },
+    summary: function () { return game.summary(); },
+    perf: function () { return { fps: fpsN / Math.max(0.001, fpsAcc), worst: worstFrame, frames: fpsN }; },
+    best: function () { return best; }
+  };
+})();
+</script>
+</body>
+</html>
