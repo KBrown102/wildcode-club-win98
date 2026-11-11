@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>雪径 · 开路</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script>/* 移动端可用高度：地址栏会吃掉 vh */
+(function(){function s(){var v=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;document.documentElement.style.setProperty('--vh',v+'px');}s();window.addEventListener('resize',s);window.addEventListener('orientationchange',s);if(window.visualViewport)window.visualViewport.addEventListener('resize',s);})();</script>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv" width="900" height="600"></canvas>
+
+    <div class="hud">
+      <div class="card" id="hLvl">第 一 夜<small id="hLvlSub">雪原信使</small></div>
+      <div class="card" id="hMid">
+        <div class="lbl"><span>体力</span><span id="vStam">100</span></div>
+        <div class="bar" id="bStam"><i style="width:100%"></i></div>
+        <div class="lbl"><span>风雪</span><span id="vTime">64</span></div>
+        <div class="bar" id="bTime"><i style="width:100%"></i></div>
+      </div>
+      <div class="card" id="hRight">
+        <div id="hMail">信 <b id="vMail">0/5</b></div>
+        <div id="bag"></div>
+      </div>
+    </div>
+
+    <div id="tip">方向键 / WASD 走 · 按住 <b>Shift</b> 压实路面 · 在压实的路上按住 <b>空格</b> 滑行</div>
+
+    <div class="btns">
+      <button class="btn" id="bPack">压</button>
+      <button class="btn" id="bSlide">滑</button>
+      <button class="btn" id="bRetry">重来</button>
+      <button class="btn" id="bLevels">选关</button>
+      <button class="btn" id="bMute">♪</button>
+    </div>
+
+    <!-- 开始 -->
+    <div class="ov" id="ovStart">
+      <div class="panel">
+        <h1>雪　径</h1>
+        <div class="sub">开 路 · 雪原信使</div>
+        <div class="body">
+          <div class="rule"><em>陷</em><span>深雪没膝，空手走也只有三分之一速。随手踩一脚留下的只是浅痕，风一吹就没。</span></div>
+          <div class="rule"><em>压</em><span>按住 <b>Shift</b>：走得慢，但把雪压实成硬路。硬路能跑到全速，而且几乎填不平。</span></div>
+          <div class="rule"><em>返</em><span>一次只背一封。所以每一趟都是原路往返 —— <b>去程修的那条路，回程正好踩。</b></span></div>
+          <div class="rule"><em>滑</em><span>在压实的路上按住 <b>空格</b>：更快更省，但会把路磨松。省力与护路，二选一。</span></div>
+          <div class="rule"><em>归</em><span>送回营地才回体力。不修路，撑不到第四夜。</span></div>
+        </div>
+        <div class="rows">
+          <button class="btn" id="bStart" style="font-size:15px;padding:10px 26px">出　发</button>
+          <button class="btn" id="bStartLv">选关</button>
+        </div>
+        <div class="egg">路是被走出来的 —— 你只是第一个走它的人</div>
+      </div>
+    </div>
+
+    <!-- 选关 -->
+    <div class="ov hide" id="ovLevels">
+      <div class="panel">
+        <h2>选　关</h2>
+        <div class="sub">八夜，雪越来越大</div>
+        <div class="grid" id="lvGrid"></div>
+        <div class="rows"><button class="btn" id="bLvBack">返回</button></div>
+      </div>
+    </div>
+
+    <!-- 结算 -->
+    <div class="ov hide" id="ovEnd">
+      <div class="panel">
+        <div class="stars" id="eStars"></div>
+        <h2 id="eTitle">夜　归</h2>
+        <div class="sub" id="eSub"></div>
+        <div id="eStats"></div>
+        <div class="poem" id="ePoem"></div>
+        <div class="rows">
+          <button class="btn" id="bNext" style="font-size:14px;padding:9px 22px">下一夜</button>
+          <button class="btn" id="bAgain">再走一遍</button>
+          <button class="btn" id="bEndLv">选关</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

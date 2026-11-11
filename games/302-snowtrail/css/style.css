@@ -1,0 +1,104 @@
+:root{
+  --sc:1; --inv:1;
+  --ink:#1d232d; --ink2:#3a4351; --paper:#f2f5f8;
+  --warm:#c4553b; --gold:#e0b04b; --cold:#7e93ad;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:var(--vh,100%);background:#0e131b;overflow:hidden;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;color:var(--ink)}
+#wrap{position:fixed;left:0;top:0;width:100vw;height:var(--vh,100vh);display:flex;align-items:center;justify-content:center}
+#stage{position:relative;width:900px;height:600px;flex:0 0 auto;margin:auto;
+  transform:scale(var(--sc));transform-origin:center center;
+  border-radius:14px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+#cv{position:absolute;inset:0;width:900px;height:600px;display:block}
+
+/* ---------- HUD ---------- */
+.hud{position:absolute;left:0;right:0;top:0;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;
+  pointer-events:none;z-index:20}
+.card{background:rgba(246,249,252,.93);
+  border:1px solid rgba(120,140,164,.28);border-radius:10px;padding:7px 11px;
+  box-shadow:0 4px 16px rgba(20,30,48,.16)}
+#hLvl{font-size:14px;font-weight:700;letter-spacing:.5px}
+#hLvl small{display:block;font-weight:400;font-size:11px;color:#6b7a8f;margin-top:2px}
+#hMid{flex:1;display:flex;flex-direction:column;gap:6px}
+.bar{height:9px;border-radius:6px;background:rgba(160,178,198,.35);overflow:hidden;position:relative}
+/* 不用 transition：宽度每帧都在改，加了过渡反而让合成层每帧重启动画 */
+.bar>i{display:block;height:100%;border-radius:6px}
+#bStam>i{background:linear-gradient(90deg,#8fb4d6,#4d7ea8)}
+#bStam.low>i{background:linear-gradient(90deg,#d98a6a,#c4553b)}
+#bTime>i{background:linear-gradient(90deg,#c9d6e2,#8fa3b8)}
+.lbl{font-size:11px;color:#5c6b7f;display:flex;justify-content:space-between;gap:8px;letter-spacing:.4px}
+#hRight{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+#hMail{font-size:12px;font-weight:600;letter-spacing:.5px;white-space:nowrap}
+#hMail b{color:var(--warm);font-size:15px}
+#bag{display:flex;gap:3px}
+#bag i{width:9px;height:12px;border-radius:2px;background:#e7d7b4;border:1px solid #8a7a55;display:block}
+#bag i.off{background:rgba(255,255,255,.25);border-color:rgba(90,110,130,.35)}
+
+/* ---------- 按钮 ---------- */
+.btns{position:absolute;right:12px;bottom:12px;display:flex;gap:8px;z-index:30}
+.btn{pointer-events:auto;cursor:pointer;border:1px solid rgba(120,140,164,.35);
+  background:rgba(246,249,252,.94);
+  color:var(--ink);border-radius:9px;padding:7px 12px;font-size:12.5px;letter-spacing:.5px;
+  box-shadow:0 3px 12px rgba(20,30,48,.18);user-select:none;position:relative;z-index:40}
+.btn:active{transform:translateY(1px)}
+.btn.on{background:rgba(196,85,59,.9);color:#fff;border-color:rgba(196,85,59,.9)}
+#bSlide{position:absolute;left:12px;bottom:12px;z-index:30;padding:12px 20px;font-size:14px;font-weight:700;
+  display:none}
+body.touch #bSlide{display:block}
+#bSlide.act{background:rgba(196,85,59,.92);color:#fff}
+
+/* ---------- 提示 ---------- */
+#tip{position:absolute;left:14px;bottom:14px;z-index:25;max-width:430px;
+  background:rgba(30,38,50,.72);color:#eef3f8;border-radius:9px;padding:7px 12px;font-size:12.5px;
+  line-height:1.55;letter-spacing:.3px;pointer-events:none}
+#tip b{color:var(--gold)}
+
+/* ---------- 遮罩 ---------- */
+.ov{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,rgba(16,24,38,.86),rgba(20,30,46,.92));backdrop-filter:blur(5px)}
+.ov.hide{display:none}
+.panel{width:560px;max-width:86%;background:rgba(244,247,250,.96);border-radius:16px;padding:24px 26px;
+  box-shadow:0 24px 70px rgba(0,0,0,.5);text-align:center}
+.panel h1{margin:0 0 4px;font-size:26px;letter-spacing:2px}
+.panel h2{margin:0 0 10px;font-size:19px;letter-spacing:1.5px}
+.sub{color:#5f6e82;font-size:12.5px;letter-spacing:1px;margin-bottom:14px}
+.body{font-size:13.5px;line-height:1.85;color:#39434f;text-align:left;margin:0 auto 16px;max-width:470px}
+.body b{color:var(--warm)}
+.rule{display:flex;gap:10px;align-items:flex-start;margin:7px 0}
+.rule em{flex:0 0 74px;font-style:normal;font-weight:700;color:#2b3441;font-size:12.5px;
+  background:rgba(126,147,173,.18);border-radius:6px;padding:3px 6px;text-align:center}
+.rule span{flex:1;font-size:12.5px;color:#48545f;line-height:1.6}
+.stars{font-size:26px;letter-spacing:6px;color:var(--gold);margin:2px 0 8px}
+.stat{display:flex;justify-content:space-between;font-size:12.5px;color:#5a6878;padding:3px 6px;
+  border-bottom:1px dashed rgba(120,140,164,.3)}
+.stat b{color:#243040}
+.rows{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:6px 0 14px}
+.lv{position:relative;border-radius:10px;padding:9px 4px;cursor:pointer;background:rgba(126,147,173,.14);
+  border:1px solid rgba(120,140,164,.3);font-size:12px;color:#39434f}
+.lv.lock{opacity:.4;cursor:not-allowed}
+.lv.cur{border-color:var(--warm);background:rgba(196,85,59,.14)}
+.lv u{display:block;text-decoration:none;font-size:10.5px;color:#7c8a9c;margin-top:2px}
+.lv s{display:block;text-decoration:none;font-size:11px;color:var(--gold);letter-spacing:1px}
+.poem{font-size:15px;letter-spacing:4px;color:#2b3441;margin:10px 0 4px;font-weight:600}
+.egg{font-size:12px;color:#7c8a9c;letter-spacing:.6px;margin-top:8px}
+body.compact #tip{display:none}
+body.compact .hud{padding:8px 10px;gap:6px}
+body.compact .card{padding:5px 8px}
+body.compact #hLvl{font-size:12px}
+body.compact .lbl{font-size:10px}
+body.compact .qi{display:none}
+body.compact #tip{display:none}
+body.compact .hud{padding:7px 9px;gap:5px}
+body.compact .card{padding:4px 7px;border-radius:8px}
+body.compact #hLvl{font-size:11.5px}
+body.compact #hLvl small{font-size:9.5px;margin-top:1px}
+body.compact .lbl{font-size:9.5px;letter-spacing:.2px}
+body.compact .bar{height:7px}
+body.compact #hMail{font-size:10.5px}
+body.compact #hMail b{font-size:12.5px}
+body.compact #bag i{width:7px;height:10px}
+body.compact .btn{padding:5px 9px;font-size:11px}
+body.compact #bSlide{padding:9px 15px;font-size:12.5px}
+@media (max-width:720px){ #tip{max-width:60vw;font-size:11.5px} }
