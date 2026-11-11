@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>引光 · 一镜明</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="stage">
+      <canvas id="game"></canvas>
+
+      <!-- 顶部 HUD -->
+      <div id="hud">
+        <div class="hud-left">
+          <div class="level-label"><span id="lvNum">第 1 关</span></div>
+          <div class="sub-label">把光引到沉睡的灯</div>
+        </div>
+        <div class="hud-right">
+          <div class="chip" id="mirrorChip"><span class="chip-ico">◇</span><span id="mirrorLeft">0</span></div>
+          <div class="chip" id="bestChip"><span id="bestStars">☆☆☆</span></div>
+        </div>
+      </div>
+
+      <!-- 底部操作条 -->
+      <div id="toolbar">
+        <button class="tbtn" id="btnReset" title="重置本关">重置</button>
+        <button class="tbtn" id="btnRemove" title="拾回镜面">拾回</button>
+        <button class="tbtn" id="btnHint" title="提示（每次直接转正一面，限 3 次）">提示</button>
+        <button class="tbtn" id="btnSelect" title="选关">选关</button>
+        <button class="tbtn icon" id="btnMute" title="静音">♪</button>
+      </div>
+
+      <!-- 轻提示 -->
+      <div id="toast"></div>
+
+      <!-- 开始浮层 -->
+      <div class="overlay" id="startOverlay">
+        <div class="panel">
+          <div class="game-title">引光 · 一镜明</div>
+          <div class="game-sub">光会自己找到路，只要你替它转一次身。</div>
+          <ul class="rules">
+            <li>点亮光源会射出一道光束</li>
+            <li>在空格<b>轻点</b>放置镜面，<b>再点</b>旋转它（<b>/</b> 与 <b>\</b>）</li>
+            <li>把光束引到沉睡的灯，它就亮了</li>
+            <li>零失败：随时重置、拾回、提示</li>
+          </ul>
+          <button class="bigbtn" id="btnStart">开始引光</button>
+        </div>
+      </div>
+
+      <!-- 通关浮层 -->
+      <div class="overlay hidden" id="winOverlay">
+        <div class="panel">
+          <div class="win-title">灯，亮了</div>
+          <div class="stars" id="winStars">★★★</div>
+          <div class="win-sub" id="winSub"></div>
+          <div class="win-btns">
+            <button class="bigbtn ghost" id="btnReplay">重玩</button>
+            <button class="bigbtn ghost" id="btnToSelect">选关</button>
+            <button class="bigbtn" id="btnNext">下一关</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 选关浮层 -->
+      <div class="overlay hidden" id="selectOverlay">
+        <div class="panel wide">
+          <div class="sel-title">选择关卡</div>
+          <div class="sel-grid" id="selGrid"></div>
+          <button class="bigbtn ghost" id="btnSelClose">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/smoothing.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
