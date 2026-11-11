@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#5E6B9E" />
+<title>放鸢 · 把线放长一点</title>
+<style>
+  :root{
+    --ink:#2E2A33; --paper:#FBF5EA; --warm:#F7D9A8; --rose:#EE9F9E;
+    --violet:#8E86B4; --gold:#E8C27E; --red:#D9603B; --jade:#7FA88C;
+    --glass:rgba(28,24,34,.34); --glass2:rgba(255,250,240,.14);
+    --stroke:rgba(255,248,235,.22);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#1B1720;
+    font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,-apple-system,sans-serif;
+    color:var(--paper);user-select:none;-webkit-user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  /* 逻辑舞台固定 480×800，整体缩放只由 #stage 的 transform 负责 */
+  #stage{position:relative;width:480px;height:800px;transform-origin:center center;
+    border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  canvas{display:block;width:480px!important;height:800px!important}
+
+  /* ---------- HUD ---------- */
+  .hud{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+    align-items:flex-start;padding:14px 16px;gap:8px;
+    background:linear-gradient(to bottom,rgba(30,24,36,.42),rgba(30,24,36,0))}
+  .stat{background:var(--glass);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+    border:1px solid var(--stroke);border-radius:12px;padding:6px 11px;min-width:74px;text-align:center}
+  .stat b{display:block;font-size:20px;line-height:1.15;font-weight:700;letter-spacing:.3px;
+    font-variant-numeric:tabular-nums}
+  .stat i{display:block;font-style:normal;font-size:10px;opacity:.62;margin-top:1px;letter-spacing:2px}
+  .stat.alt b{color:var(--gold)} .stat.score b{color:#FFF2D4}
+
+  /* 左右竖表 */
+  .gauge{position:absolute;top:96px;width:26px;bottom:150px;display:flex;flex-direction:column;
+    align-items:center;justify-content:flex-end}
+  .gauge .track{position:relative;width:11px;height:100%;border-radius:7px;
+    background:rgba(20,16,26,.34);border:1px solid var(--stroke);overflow:hidden}
+  .gauge .fill{position:absolute;left:0;right:0;bottom:0;border-radius:7px;transition:background .25s}
+  .gauge .cap{font-size:9px;letter-spacing:2px;opacity:.66;margin-top:7px;writing-mode:vertical-rl}
+  #gLine{left:18px} #gLine .fill{background:linear-gradient(to top,#7FA88C,#F7D9A8)}
+  #gTen{right:18px} #gTen .fill{background:linear-gradient(to top,#7FA88C,#E8C27E 58%,#D9603B)}
+  #gTen.warn .track{box-shadow:0 0 0 2px rgba(217,96,59,.55);animation:pulse .5s infinite alternate}
+  @keyframes pulse{from{box-shadow:0 0 0 1px rgba(217,96,59,.3)}to{box-shadow:0 0 0 4px rgba(217,96,59,.7)}}
+
+  /* 底部：五音串 + 连击 */
+  .botbar{position:absolute;left:0;right:0;bottom:0;padding:0 16px 16px;display:flex;
+    flex-direction:column;align-items:center;gap:8px}
+  .notes{display:flex;gap:6px;height:26px;align-items:center}
+  .notes span{width:24px;height:24px;line-height:24px;text-align:center;border-radius:8px;font-size:13px;
+    font-weight:700;background:rgba(20,16,26,.34);border:1px solid var(--stroke);
+    animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  .combo{font-size:13px;letter-spacing:1px;opacity:0;transition:opacity .2s;height:17px}
+  .combo.on{opacity:.92;color:var(--gold)}
+  .hint{font-size:11.5px;opacity:.5;letter-spacing:1px}
+
+  /* 阵风预警 */
+  .gust{position:absolute;top:74px;left:50%;transform:translateX(-50%) translateY(-8px);
+    padding:5px 15px;border-radius:20px;font-size:12.5px;letter-spacing:2px;
+    background:rgba(217,96,59,.3);border:1px solid rgba(255,214,180,.5);
+    backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+    opacity:0;transition:opacity .18s,transform .18s;pointer-events:none}
+  .gust.on{opacity:1;transform:translateX(-50%) translateY(0);animation:shake .42s infinite alternate}
+  @keyframes shake{from{margin-left:-3px}to{margin-left:3px}}
+
+  /* ---------- 遮罩 ---------- */
+  .veil{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:26px 24px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 30%,rgba(52,42,62,.62),rgba(22,18,28,.9));
+    backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);gap:14px}
+  .veil.hide{display:none}
+  .veil h1{margin:0;font-size:40px;letter-spacing:10px;font-weight:800;
+    background:linear-gradient(180deg,#FFF3D6,#EEC08A);-webkit-background-clip:text;background-clip:text;
+    color:transparent;text-indent:10px}
+  .veil .sub{margin:-6px 0 2px;font-size:13px;letter-spacing:4px;opacity:.66}
+  .veil .lead{font-size:13.5px;line-height:2;opacity:.8;max-width:330px}
+  .veil .lead em{font-style:normal;color:var(--gold)}
+
+  .kites{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;width:100%;max-width:340px}
+  .kite{pointer-events:auto;cursor:pointer;border-radius:13px;padding:9px 6px 8px;
+    background:var(--glass2);border:1px solid var(--stroke);transition:.18s;position:relative}
+  .kite:hover{background:rgba(255,250,240,.2)}
+  .kite.sel{border-color:var(--gold);background:rgba(232,194,126,.2);
+    box-shadow:0 0 0 1px rgba(232,194,126,.5),0 6px 18px rgba(0,0,0,.3)}
+  .kite.lock{opacity:.34;cursor:not-allowed}
+  .kite .glyph{height:34px;display:flex;align-items:center;justify-content:center;margin-bottom:3px}
+  .kite .nm{font-size:13px;font-weight:700;letter-spacing:1px}
+  .kite .ds{font-size:9.5px;opacity:.6;margin-top:2px;line-height:1.4;min-height:26px}
+  .kite .lk{font-size:9px;opacity:.72;margin-top:3px;color:var(--gold)}
+
+  .btn{pointer-events:auto;cursor:pointer;border:none;border-radius:26px;padding:13px 42px;
+    font-size:15.5px;font-weight:700;letter-spacing:4px;color:#3A2A1E;
+    background:linear-gradient(180deg,#FFEFC8,#E9C58C);
+    box-shadow:0 8px 22px rgba(0,0,0,.35);transition:.16s;font-family:inherit;text-indent:4px}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(0,0,0,.42)}
+  .btn:active{transform:translateY(0)}
+  .btn.ghost{background:rgba(255,250,240,.12);color:var(--paper);
+    border:1px solid var(--stroke);box-shadow:none;font-size:13px;padding:10px 26px;letter-spacing:3px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;width:100%;max-width:320px;margin:2px 0}
+  .cell{display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px dashed rgba(255,248,235,.16);padding:6px 2px}
+  .cell span{font-size:11.5px;opacity:.6;letter-spacing:2px}
+  .cell b{font-size:19px;font-variant-numeric:tabular-nums}
+  .poem{font-size:13px;line-height:2;opacity:.72;letter-spacing:1.5px;max-width:320px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+
+  .corner{position:absolute;top:14px;right:16px;z-index:8;display:flex;gap:7px;pointer-events:auto}
+  .ico{width:30px;height:30px;border-radius:9px;border:1px solid var(--stroke);
+    background:var(--glass);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:13px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+  .ico.off{opacity:.42}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="cv"></canvas>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="topbar">
+      <div class="stat alt"><b id="hAlt">0</b><i>高度 米</i></div>
+      <div class="stat score"><b id="hScore">0</b><i>分</i></div>
+      <div class="stat"><b id="hTime">100</b><i>风 秒</i></div>
+    </div>
+
+    <div class="gauge" id="gLine"><div class="track"><div class="fill" id="fLine"></div></div><div class="cap">线</div></div>
+    <div class="gauge" id="gTen"><div class="track"><div class="fill" id="fTen"></div></div><div class="cap">张力</div></div>
+
+    <div class="gust" id="gust">阵 风 ←</div>
+
+    <div class="botbar">
+      <div class="notes" id="notes"></div>
+      <div class="combo" id="combo"></div>
+      <div class="hint" id="hint">↑↓ 收放线　←→ 侧牵引　·　拖屏同样可以</div>
+    </div>
+  </div>
+
+  <div class="corner">
+    <div class="ico" id="btnMute" title="静音">♪</div>
+  </div>
+
+  <!-- 开始 -->
+  <div class="veil" id="veilMenu">
+    <h1>放鸢</h1>
+    <div class="sub">把线放长一点</div>
+    <div class="lead">
+      线越长，飞得越高，风铃也越值钱——<br>
+      可线绷得太紧<em>会断</em>。<br>
+      收一点，放一点，让天空替你写一程。
+    </div>
+    <div class="kites" id="kites"></div>
+    <button class="btn" id="btnStart">放</button>
+    <div class="hint" id="bestLine">最高 0 米　·　池上 0 盏灯</div>
+  </div>
+
+  <!-- 结算 -->
+  <div class="veil hide" id="veilOver">
+    <h1 style="font-size:31px;letter-spacing:7px">风停了</h1>
+    <div class="grid">
+      <div class="cell"><span>最高</span><b id="oAlt">0</b></div>
+      <div class="cell"><span>得分</span><b id="oScore">0</b></div>
+      <div class="cell"><span>成音</span><b id="oNotes">0</b></div>
+      <div class="cell"><span>断线</span><b id="oSnaps">0</b></div>
+    </div>
+    <div class="poem" id="oPoem">线还在手里。</div>
+    <div class="hint" id="oBest"></div>
+    <div id="oUnlock" class="hint" style="color:#E8C27E;opacity:.9"></div>
+    <div class="row">
+      <button class="btn" id="btnAgain">再来一次</button>
+      <button class="btn ghost" id="btnChange">换只鸢</button>
+    </div>
+  </div>
+</div></div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  "use strict";
+  var W = 480, H = 800;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var cv = $("cv");
+  var G = Windline.createGame();
+  var S = G.state, C = G.C;
+  var R = WindlineRender.create(cv, C);
+
+  /* ---------------- 缩放 ---------------- */
+  var stage = $("stage");
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var k = Math.min(vw / W, vh / H);
+    stage.style.transform = "scale(" + k + ")";
+    // canvas 的 CSS 尺寸恒为逻辑尺寸，只有 backing store 乘 dpr*scale 保清晰
+    R.resize(W, H, k);
+  }
+
+  /* ---------------- 音频（五声音阶） ---------------- */
+  var AC = null, master = null, windGain = null, muted = false;
+  var PENTA = C.PENTA;
+  function audioInit() {
+    if (AC) return;
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination);
+      // 风声：带通白噪，增益随风速
+      var len = AC.sampleRate * 2, buf = AC.createBuffer(1, len, AC.sampleRate), d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.55;
+      var src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+      var bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 430; bp.Q.value = 0.65;
+      windGain = AC.createGain(); windGain.gain.value = 0;
+      src.connect(bp); bp.connect(windGain); windGain.connect(master);
+      src.start();
+    } catch (e) { AC = null; }
+  }
+  function tone(freq, dur, vol, type) {
+    if (!AC || muted) return;
+    var o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
+    o.type = type || "sine"; o.frequency.value = freq;
+    f.type = "lowpass"; f.frequency.value = 2600;
+    g.gain.setValueAtTime(0, AC.currentTime);
+    g.gain.linearRampToValueAtTime(vol, AC.currentTime + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+    o.connect(f); f.connect(g); g.connect(master);
+    o.start(); o.stop(AC.currentTime + dur + 0.03);
+  }
+  function noteHit(note, combo) {
+    if (!AC || muted) return;
+    var oct = combo > 12 ? 2 : (combo > 5 ? 1.5 : 1);
+    tone(PENTA[note] * oct, 1.05, 0.2, "sine");
+    tone(PENTA[note] * oct * 2, 0.5, 0.055, "triangle");
+  }
+  function sfx(kind) {
+    if (!AC || muted) return;
+    if (kind === "snap") { tone(180, 0.5, 0.20, "sawtooth"); tone(92, 0.75, 0.14, "sine"); }
+    else if (kind === "cloud") tone(520, 0.35, 0.05, "sine");
+    else if (kind === "warn") tone(760, 0.16, 0.06, "triangle");
+    else if (kind === "over") { tone(PENTA[0] / 2, 1.5, 0.14, "sine"); tone(PENTA[3], 1.3, 0.09, "sine"); }
+    else if (kind === "start") { tone(PENTA[0], 0.7, 0.11, "sine"); tone(PENTA[3], 0.9, 0.08, "sine"); }
+  }
+
+  /* ---------------- 事件消费 ---------------- */
+  function pumpAudio(events) {
+    for (var i = 0; i < events.length; i++) {
+      var e = events[i];
+      if (e.type === "note") noteHit(e.note, e.combo);
+      else if (e.type === "cloud") sfx("cloud");
+      else if (e.type === "snap") sfx("snap");
+      else if (e.type === "gustWarn") sfx("warn");
+      else if (e.type === "over") sfx("over");
+      else if (e.type === "start" || e.type === "rekit") sfx("start");
+    }
+  }
+
+  /* ---------------- 输入 ---------------- */
+  var input = { reel: 0, bias: 0 };
+  var keys = {};
+  var drag = null;
+
+  function keyReel() {
+    var r = 0;
+    if (keys.up) r -= 1;          // ↑ 放线
+    if (keys.down) r += 1;        // ↓ 收线
+    return r;
+  }
+  function keyBias() {
+    var b = 0;
+    if (keys.left) b -= 1;
+    if (keys.right) b += 1;
+    return b;
+  }
+
+  window.addEventListener("keydown", function (e) {
+    var k = e.key;
+    if (k === "ArrowUp" || k === "w" || k === "W") { keys.up = true; e.preventDefault(); }
+    if (k === "ArrowDown" || k === "s" || k === "S") { keys.down = true; e.preventDefault(); }
+    if (k === "ArrowLeft" || k === "a" || k === "A") { keys.left = true; e.preventDefault(); }
+    if (k === "ArrowRight" || k === "d" || k === "D") { keys.right = true; e.preventDefault(); }
+    if (k === " " || k === "Enter") {
+      e.preventDefault();
+      if (S.phase === "menu") doStart();
+      else if (S.phase === "over") doStart();
+    }
+    if (k === "m" || k === "M") toggleMute();
+  });
+  window.addEventListener("keyup", function (e) {
+    var k = e.key;
+    if (k === "ArrowUp" || k === "w" || k === "W") keys.up = false;
+    if (k === "ArrowDown" || k === "s" || k === "S") keys.down = false;
+    if (k === "ArrowLeft" || k === "a" || k === "A") keys.left = false;
+    if (k === "ArrowRight" || k === "d" || k === "D") keys.right = false;
+  });
+
+  function localPt(e) {
+    var r = cv.getBoundingClientRect();
+    var sx = r.width / W, sy = r.height / H;
+    return { x: (e.clientX - r.left) / sx, y: (e.clientY - r.top) / sy };
+  }
+  function onDown(e) {
+    if (S.phase !== "fly" && S.phase !== "landing") return;
+    var p = localPt(e);
+    drag = { x0: p.x, y0: p.y };
+    if (e.cancelable) e.preventDefault();
+  }
+  function onMove(e) {
+    if (!drag) return;
+    var p = localPt(e);
+    drag.dx = p.x - drag.x0;
+    drag.dy = p.y - drag.y0;
+    if (e.cancelable) e.preventDefault();
+  }
+  function onUp() { drag = null; }
+
+  cv.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointermove", onMove, { passive: false });
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+  cv.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  function readInput() {
+    var r = keyReel(), b = keyBias();
+    if (drag) {
+      // 向上拖（dy 为负）= 放线，与 ↑ 键一致；拖得越多越快
+      var dr = (drag.dy || 0) / 90;
+      if (dr < -1) dr = -1; if (dr > 1) dr = 1;
+      if (Math.abs(dr) > 0.08) r = dr;
+      var dx = drag.dx || 0;
+      if (dx > 26) b = 1; else if (dx < -26) b = -1;
+    }
+    input.reel = r; input.bias = b;
+  }
+
+  /* ---------------- HUD ---------------- */
+  var el = {
+    alt: $("hAlt"), score: $("hScore"), time: $("hTime"),
+    fLine: $("fLine"), fTen: $("fTen"), gTen: $("gTen"),
+    notes: $("notes"), combo: $("combo"), gust: $("gust"), hint: $("hint")
+  };
+  var lastNotes = -1, lastSeq = "";
+
+  function syncHud() {
+    el.alt.textContent = Math.round(S.ky);
+    el.score.textContent = Math.round(S.score);
+    el.time.textContent = Math.ceil(S.timeLeft);
+
+    var Tn = (S.L - C.L_MIN) / (C.L_MAX - C.L_MIN);
+    el.fLine.style.height = (Tn * 100).toFixed(1) + "%";
+    var tk = S.tension / C.TENSION_MAX;
+    el.fTen.style.height = (tk * 100).toFixed(1) + "%";
+    if (tk > 0.78) el.gTen.classList.add("warn"); else el.gTen.classList.remove("warn");
+
+    var seq = S.notesSeq.join(",");
+    if (seq !== lastSeq) {
+      lastSeq = seq;
+      el.notes.innerHTML = "";
+      for (var i = 0; i < S.notesSeq.length; i++) {
+        var s = document.createElement("span");
+        s.textContent = C.NOTES[S.notesSeq[i]];
+        s.style.color = C.NOTE_COLORS[S.notesSeq[i]];
+        el.notes.appendChild(s);
+      }
+    }
+    if (S.combo >= 3) { el.combo.textContent = "连 " + S.combo + "　×" + (1 + Math.min(S.combo, 20) * 0.08).toFixed(2); el.combo.classList.add("on"); }
+    else el.combo.classList.remove("on");
+
+    if (S.gust.st === "warn") { el.gust.textContent = "阵 风 " + (S.gust.dir > 0 ? "→" : "←"); el.gust.classList.add("on"); }
+    else el.gust.classList.remove("on");
+
+    if (S.phase === "fly" || S.phase === "landing") {
+      if (S.tension > 86) el.hint.textContent = "太紧了——往下拖收线";
+      else if (S.ky < 110) el.hint.textContent = "贴着水面，风很轻　·　往上拖放线";
+      else el.hint.textContent = "↑↓ 收放线　←→ 侧牵引";
+    }
+  }
+
+  /* ---------------- 鸢选择 ---------------- */
+  function kiteGlyph(k) {
+    var c = k.color, s = [];
+    if (k.shape === "diamond") s.push('<svg width="26" height="32" viewBox="0 0 26 32"><path d="M13 2 L24 14 L13 27 L2 14 Z" fill="' + c + '"/><path d="M13 2 L13 27 M2 14 L24 14" stroke="rgba(255,244,226,.55)" stroke-width="1"/></svg>');
+    else if (k.shape === "swallow") s.push('<svg width="30" height="30" viewBox="0 0 30 30"><path d="M15 5 L29 3 L20 15 L15 26 L10 15 L1 3 Z" fill="' + c + '"/><ellipse cx="15" cy="12" rx="3" ry="4" fill="rgba(255,246,232,.8)"/></svg>');
+    else if (k.shape === "wing") s.push('<svg width="30" height="30" viewBox="0 0 30 30"><path d="M15 9 Q28 -2 26 13 Q21 21 15 25 Q9 21 4 13 Q2 -2 15 9 Z" fill="' + c + '"/><circle cx="10" cy="10" r="2.2" fill="rgba(255,246,232,.7)"/><circle cx="20" cy="10" r="2.2" fill="rgba(255,246,232,.7)"/></svg>');
+    else if (k.shape === "fish") s.push('<svg width="32" height="26" viewBox="0 0 32 26"><path d="M4 13 Q16 1 28 13 Q16 23 4 13 Z" fill="' + c + '"/><path d="M4 13 L0 5 L0 21 Z" fill="' + c + '"/><circle cx="23" cy="10" r="1.7" fill="rgba(255,250,240,.9)"/></svg>');
+    else if (k.shape === "crane") s.push('<svg width="30" height="30" viewBox="0 0 30 30"><path d="M13 4 L29 13 L15 17 L1 21 Z" fill="' + c + '"/><path d="M8 8 L2 2" stroke="' + c + '" stroke-width="2"/><circle cx="2" cy="2" r="2.4" fill="#B8443C"/></svg>');
+    else s.push('<svg width="28" height="32" viewBox="0 0 28 32"><ellipse cx="14" cy="6" rx="8" ry="5" fill="' + c + '"/><ellipse cx="13" cy="14" rx="7" ry="4.4" fill="' + c + '" opacity=".86"/><ellipse cx="12" cy="21" rx="6" ry="3.8" fill="' + c + '" opacity=".7"/><ellipse cx="11" cy="27" rx="5" ry="3.2" fill="' + c + '" opacity=".55"/></svg>');
+    return s.join("");
+  }
+
+  function buildKites() {
+    var box = $("kites"); box.innerHTML = "";
+    var sv = S.save;
+    C.KITES.forEach(function (k) {
+      var d = document.createElement("div");
+      var un = sv.unlocked.indexOf(k.id) >= 0;
+      d.className = "kite" + (un ? "" : " lock") + (sv.kite === k.id ? " sel" : "");
+      var lock = un ? "" : '<div class="lk">' + (k.unlock ? k.unlock.label : "") + "</div>";
+      d.innerHTML = '<div class="glyph">' + kiteGlyph(k) + '</div><div class="nm">' + k.name +
+        '</div><div class="ds">' + (un ? k.desc : "未解锁") + "</div>" + lock;
+      if (un) d.addEventListener("click", function () {
+        G.selectKite(k.id); audioInit(); tone(PENTA[2], 0.3, 0.1, "sine"); buildKites();
+      });
+      box.appendChild(d);
+    });
+    $("bestLine").textContent = "最高 " + Math.round(sv.bestAlt) + " 米　·　成音 " +
+      sv.totalNotes + "　·　池上 " + sv.lanterns + " 盏灯";
+  }
+
+  /* ---------------- 流程 ---------------- */
+  var veilMenu = $("veilMenu"), veilOver = $("veilOver");
+
+  function doStart() {
+    audioInit();
+    if (AC && AC.state === "suspended") AC.resume();
+    G.start(S.kiteId);
+    R.clear();
+    overShown = false;
+    lastSeq = "";
+    veilMenu.classList.add("hide");
+    veilOver.classList.add("hide");
+    el.hint.textContent = "↑↓ 收放线　←→ 侧牵引";
+  }
+  function toMenu() {
+    S.phase = "menu";
+    veilMenu.classList.remove("hide");
+    veilOver.classList.add("hide");
+    buildKites();
+  }
+
+  $("btnStart").addEventListener("click", doStart);
+  $("btnAgain").addEventListener("click", doStart);
+  $("btnChange").addEventListener("click", toMenu);
+
+  function toggleMute() {
+    muted = !muted;
+    S.save.muted = muted; Windline.writeSave(S.save);
+    $("btnMute").textContent = muted ? "✕" : "♪";
+    $("btnMute").classList.toggle("off", muted);
+    if (master) master.gain.value = muted ? 0 : 0.5;
+  }
+  $("btnMute").addEventListener("click", toggleMute);
+  if (S.save.muted) { muted = true; $("btnMute").textContent = "✕"; $("btnMute").classList.add("off"); }
+
+  var POEMS = [
+    "线还在手里。",
+    "风来过，也停过，你都接住了。",
+    "高处的风更冷，可你还是上去了。",
+    "断掉的那些，都落在水上了。",
+    "一程风，一程音。"
+  ];
+
+  function showOver(S) {
+    $("oAlt").textContent = S.maxAlt;
+    $("oScore").textContent = S.score;
+    $("oNotes").textContent = S.notes;
+    $("oSnaps").textContent = S.snaps;
+    $("oPoem").textContent = S.snaps === 0
+      ? "一根线，从头到尾没断过。"
+      : POEMS[Math.min(POEMS.length - 1, S.snaps % POEMS.length)];
+    $("oBest").textContent = "最好成绩　" + S.save.bestAlt + " 米　/　" + S.save.bestScore + " 分";
+    var u = S.unlockedThisRun || [];
+    $("oUnlock").textContent = u.length
+      ? "新鸢入篓：" + u.map(function (id) {
+          for (var i = 0; i < C.KITES.length; i++) if (C.KITES[i].id === id) return C.KITES[i].name;
+          return id;
+        }).join("、")
+      : "";
+    veilOver.classList.remove("hide");
+  }
+
+  /* ---------------- 主循环 ---------------- */
+  var last = 0, acc = 0, fps = 60, frames = 0, fpsT = 0, overShown = false;
+  function loop(ts) {
+    requestAnimationFrame(loop);
+    if (!last) last = ts;
+    var dt = (ts - last) / 1000;
+    last = ts;
+    if (dt > 0.05) dt = 0.05;
+    if (dt <= 0) return;
+
+    readInput();
+
+    if (S.phase === "fly" || S.phase === "landing" || S.phase === "respawn") {
+      G.step(dt, input);
+    }
+
+    // events 只 drain 一次，同时喂给音效与渲染，避免粒子被抢空
+    var evs = G.drain();
+    if (evs.length) { pumpAudio(evs); R.pump(evs, S); }
+
+    // 用独立标志位判定：over 可能在 step 之外发生（如中途收线），用 wasOver 前后比对会漏弹
+    if (S.phase === "over" && !overShown) { overShown = true; showOver(S); }
+
+    R.draw(S, dt);
+    syncHud();
+
+    // 风声跟随风速
+    if (windGain && AC) {
+      var target = Math.min(0.09, Math.abs(S.windX) * 0.028);
+      windGain.gain.value += (target - windGain.gain.value) * 0.08;
+    }
+
+    frames++; fpsT += dt;
+    if (fpsT >= 0.5) { fps = frames / fpsT; frames = 0; fpsT = 0; }
+  }
+
+  /* ---------------- 启动 ---------------- */
+  window.addEventListener("resize", fit);
+  fit();
+  buildKites();
+  requestAnimationFrame(loop);
+
+  /* 探针钩子 */
+  window.__WL = {
+    api: G, render: R, state: S, input: input,
+    get fps() { return fps; },
+    start: doStart, toMenu: toMenu,
+    setDrag: function (dx, dy) { drag = drag || { x0: 0, y0: 0 }; drag.dx = dx; drag.dy = dy; },
+    clearDrag: function () { drag = null; },
+    key: function (k, v) { keys[k] = v; },
+    forceSnap: function () { G.snapForce(); },
+    finish: function () { G.finish(); }
+  };
+})();
+</script>
+</body>
+</html>
