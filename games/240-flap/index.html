@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>穿隙 · 越飞越远</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#0e1524; }
+  body {
+    display:flex; align-items:center; justify-content:center;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    touch-action:none; user-select:none;
+  }
+  #wrap { position:relative; width:100%; height:100%; }
+  canvas { display:block; width:100%; height:100%; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+</div>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- 逻辑世界：竖向高度固定，宽度按视口比例，保证手感一致 ----------
+  var H = 640;                 // 逻辑高度固定
+  var W = 400;                 // 逻辑宽度（按屏幕比例动态算）
+  var GROUND = 92;             // 地面高度
+  var canvas = document.getElementById('c');
+  var ctx = canvas.getContext('2d');
+  var DPR = 1, cssW = 400, cssH = 640;
+
+  // ---------- 物理与数值（逻辑单位/秒） ----------
+  var GRAV = 1500;             // 重力加速度
+  var FLAP = -430;             // 拍翼瞬时上升速度
+  var MAXFALL = 620;           // 下落限速
+  var BIRD_R = 15;             // 视觉半径
+  var HIT_R = 12;              // 判定半径（比视觉小，宽容）
+  var PIPE_W = 62;             // 柱宽
+  var birdX = 0;               // 小家伙固定横坐标（resize 时算）
+
+  // 难度：随分数从易到难，缓和且有下限
+  function gapH(s){ return Math.max(156, 202 - s*1.4); }        // 隙高 202→156
+  function speed(s){ return Math.min(238, 156 + s*1.6); }       // 滚速 156→238
+  function pipeGapX(s){ return Math.max(232, 276 - s*1.2); }    // 柱间距 276→232
+
+  // ---------- 状态 ----------
+  var state = 'ready';         // ready | playing | over
+  var bird = { y:0, vy:0, rot:0 };
+  var pipes = [];
+  var motes = [];              // 独立粒子（庆祝/拍翼尘）
+  var floats = [];             // 飘字
+  var score = 0, best = 0, combo = 0, motesGot = 0;
+  var scrollX = 0;             // 世界滚动累计
+  var nextPipeAt = 0;          // 下一根柱子的世界坐标
+  var shake = 0, flash = 0, deathT = 0;
+  var seed = 1234567;
+  function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff; }
+
+  try { best = parseInt(localStorage.getItem('flap_best')||'0',10)||0; } catch(e){}
+
+  // ---------- 奖章成长弧 ----------
+  var MEDALS = [
+    { s:50, name:'虹', col:'#a78bfa' },
+    { s:30, name:'金', col:'#fcd34d' },
+    { s:15, name:'银', col:'#cbd5e1' },
+    { s:5,  name:'铜', col:'#e0a06a' }
+  ];
+  function medalFor(s){ for(var i=0;i<MEDALS.length;i++){ if(s>=MEDALS[i].s) return MEDALS[i]; } return null; }
+
+  // ---------- 音频：WebAudio 五声音阶 + 静音 ----------
+  var AC=null, muted=false, penta=[523.25,587.33,659.25,783.99,880.0];
+  try{ muted = localStorage.getItem('flap_mute')==='1'; }catch(e){}
+  function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } } return AC; }
+  function beep(freq,dur,type,vol){
+    if(muted) return; var a=ac(); if(!a) return;
+    try{
+      var o=a.createOscillator(), g=a.createGain();
+      o.type=type||'sine'; o.frequency.value=freq;
+      var t=a.currentTime;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(vol||0.16, t+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+(dur||0.16));
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+(dur||0.16)+0.02);
+    }catch(e){}
+  }
+  function sFlap(){ beep(300+Math.random()*40,0.10,'sine',0.10); }
+  function sPass(){ var f=penta[Math.min(combo,penta.length-1)]; beep(f,0.16,'triangle',0.16); }
+  function sMote(){ beep(1046.5,0.12,'sine',0.13); beep(1318.5,0.16,'sine',0.09); }
+  function sDie(){ beep(196,0.28,'sawtooth',0.16); beep(146,0.36,'sine',0.12); }
+  function sMedal(){ penta.forEach(function(f,i){ setTimeout(function(){beep(f,0.20,'triangle',0.14);}, i*70); }); }
+
+  // ---------- 布局 / 缩放 ----------
+  function resize(){
+    cssW = window.innerWidth||400; cssH = window.innerHeight||640;
+    DPR = Math.max(1, Math.min(3, window.devicePixelRatio||1));
+    canvas.width = Math.round(cssW*DPR); canvas.height = Math.round(cssH*DPR);
+    canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
+    W = Math.round(H * (cssW/cssH));               // 逻辑宽随屏幕比例
+    W = Math.max(300, Math.min(W, 560));           // 兜底范围
+    birdX = Math.round(W*0.30);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- 柱子生成 ----------
+  function spawnPipe(x){
+    var g = gapH(score);
+    var top = 46, bot = H - GROUND - 46;            // 隙中心可取范围
+    var cy = top + g/2 + rnd()*((bot - g/2) - (top + g/2));
+    if(cy < top+g/2) cy = top+g/2;
+    // 光点：放在隙中心附近，略随机；可选拾取
+    var mote = { dx: PIPE_W/2, dy: cy + (rnd()-0.5)*Math.min(60, g*0.4), taken:false };
+    pipes.push({ x:x, cy:cy, g:g, passed:false, mote:mote });
+  }
+
+  function reset(keepReady){
+    score=0; combo=0; motesGot=0; scrollX=0; shake=0; flash=0; deathT=0; shownMedal=-1;
+    bird.y = H*0.42; bird.vy = 0; bird.rot = 0;
+    pipes.length=0; motes.length=0; floats.length=0;
+    seed = (Date.now() & 0x7fffffff) || 1234567;
+    var gx = pipeGapX(0);
+    nextPipeAt = W + 120;
+    // 预铺三根，留出起手空间
+    for(var i=0;i<3;i++){ spawnPipe(nextPipeAt + i*gx); }
+    nextPipeAt += 3*gx;
+    state = keepReady ? 'ready' : 'playing';
+  }
+
+  // ---------- 输入 ----------
+  function flap(){
+    if(state==='ready'){ state='playing'; bird.vy=FLAP; sFlap(); puff(); return; }
+    if(state==='playing'){ bird.vy=FLAP; bird.rot=-0.5; sFlap(); puff(); return; }
+    if(state==='over'){ if(deathT>0.45){ reset(false); bird.vy=FLAP; sFlap(); } return; }
+  }
+  function puff(){
+    for(var i=0;i<5;i++){
+      motes.push({ x:birdX-8, y:bird.y+6, vx:-40-rnd()*60, vy:20+rnd()*40, life:0.5, r:2+rnd()*2, col:'rgba(255,240,200,' });
+    }
+  }
+  function burst(x,y,col,n){
+    for(var i=0;i<n;i++){
+      var a=rnd()*6.283, sp=60+rnd()*160;
+      motes.push({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:0.6+rnd()*0.3, r:2+rnd()*3, col:col });
+    }
+  }
+
+  // 静音键命中区（右上角）
+  function muteBtnRect(){ return { x:cssW-46, y:12, w:34, h:34 }; }
+  function inRect(px,py,r){ return px>=r.x && px<=r.x+r.w && py>=r.y && py<=r.y+r.h; }
+
+  function onDown(px,py){
+    var r=muteBtnRect();
+    if(inRect(px,py,r)){ muted=!muted; try{localStorage.setItem('flap_mute',muted?'1':'0');}catch(e){} return; }
+    if(!muted){ var a=ac(); if(a&&a.state==='suspended'){ try{a.resume();}catch(e){} } }
+    flap();
+  }
+  canvas.addEventListener('pointerdown', function(e){ e.preventDefault(); onDown(e.clientX, e.clientY); }, {passive:false});
+  window.addEventListener('keydown', function(e){
+    if(e.code==='Space'||e.code==='ArrowUp'||e.key===' '){ e.preventDefault(); onDown(-99,-99); }
+    else if(e.key==='m'||e.key==='M'){ muted=!muted; try{localStorage.setItem('flap_mute',muted?'1':'0');}catch(e2){} }
+    else if(e.key==='r'||e.key==='R'){ reset(true); }
+  });
+
+  // ---------- 碰撞：圆 vs 竖柱矩形 ----------
+  function circleRect(cx,cy,r, rx,ry,rw,rh){
+    var nx=Math.max(rx,Math.min(cx,rx+rw));
+    var ny=Math.max(ry,Math.min(cy,ry+rh));
+    var dx=cx-nx, dy=cy-ny; return dx*dx+dy*dy <= r*r;
+  }
+
+  // ---------- 更新 ----------
+  function update(dt){
+    if(dt>0.05) dt=0.05;
+
+    // 飘字/粒子始终推进
+    for(var i=motes.length-1;i>=0;i--){
+      var m=motes[i]; m.life-=dt; if(m.life<=0){ motes.splice(i,1); continue; }
+      m.vy+=280*dt; m.x+=m.vx*dt; m.y+=m.vy*dt;
+    }
+    for(var j=floats.length-1;j>=0;j--){
+      var f=floats[j]; f.life-=dt; f.y-=32*dt; if(f.life<=0) floats.splice(j,1);
+    }
+    if(shake>0) shake=Math.max(0,shake-dt*60);
+    if(flash>0) flash=Math.max(0,flash-dt*3);
+
+    if(state==='ready'){
+      // 轻微悬浮呼吸
+      bird.y = H*0.42 + Math.sin(scrollX*0.06)*6;
+      scrollX += speed(0)*dt*0.5;
+      return;
+    }
+    if(state==='over'){ deathT+=dt; bird.vy=Math.min(bird.vy+GRAV*dt, MAXFALL); bird.y+=bird.vy*dt;
+      var gy=H-GROUND-BIRD_R; if(bird.y>gy){ bird.y=gy; bird.vy=0; } bird.rot=Math.min(1.4,bird.rot+dt*3); return; }
+
+    // playing
+    var v = speed(score);
+    scrollX += v*dt;
+    bird.vy = Math.min(bird.vy + GRAV*dt, MAXFALL);
+    bird.y += bird.vy*dt;
+    // 姿态倾斜
+    var target = bird.vy<0 ? -0.5 : Math.min(1.2, bird.vy/MAXFALL*1.4);
+    bird.rot += (target - bird.rot)*Math.min(1, dt*9);
+
+    // 天花板：顶到就轻弹回，不判死（宽容）
+    if(bird.y < BIRD_R+2){ bird.y=BIRD_R+2; if(bird.vy<0) bird.vy=0; }
+
+    // 柱子滚动 + 生成 + 回收
+    var gx = pipeGapX(score);
+    for(var p=0;p<pipes.length;p++){ pipes[p].x -= v*dt; }
+    while(pipes.length && pipes[0].x < -PIPE_W-40){ pipes.shift(); }
+    // 依据最右柱子补新柱
+    var lastX = pipes.length ? pipes[pipes.length-1].x : (W);
+    if(lastX < W + gx){ spawnPipe(lastX + gx); }
+
+    // 计分 / 碰撞 / 拾取
+    var gyy = H-GROUND-BIRD_R;
+    for(var k=0;k<pipes.length;k++){
+      var pi=pipes[k];
+      var topH = pi.cy - pi.g/2;
+      var botY = pi.cy + pi.g/2;
+      // 光点拾取
+      if(!pi.mote.taken){
+        var mx=pi.x+pi.mote.dx, my=pi.mote.dy;
+        var ddx=birdX-mx, ddy=bird.y-my;
+        if(ddx*ddx+ddy*ddy <= (HIT_R+9)*(HIT_R+9)){
+          pi.mote.taken=true; motesGot++; combo++;
+          var bonus=Math.min(combo,5);
+          score+=bonus;
+          floats.push({ x:mx, y:my, t:'+'+bonus, col:'#fde68a', life:0.9 });
+          burst(mx,my,'#fde68a',10); sMote();
+          checkMedal();
+        }
+      }
+      // 碰撞（上柱 / 下柱）
+      if(circleRect(birdX,bird.y,HIT_R, pi.x,-10,PIPE_W,topH+10) ||
+         circleRect(birdX,bird.y,HIT_R, pi.x,botY,PIPE_W,(H-GROUND)-botY+10)){
+        die(); return;
+      }
+      // 穿隙计分（柱子右缘越过小家伙）
+      if(!pi.passed && pi.x+PIPE_W < birdX){
+        pi.passed=true; score+=1;
+        if(!pi.mote.taken) combo=0;          // 没吃到光点则断连
+        floats.push({ x:birdX+18, y:bird.y-18, t:'+1', col:'#a7f3d0', life:0.7 });
+        flash=Math.max(flash,0.35); sPass(); checkMedal();
+      }
+    }
+    // 触地判死
+    if(bird.y >= gyy){ bird.y=gyy; die(); return; }
+  }
+
+  var shownMedal=-1;
+  function checkMedal(){
+    var m=medalFor(score);
+    if(m){ var idx=MEDALS.indexOf(m); if(idx!==shownMedal){ shownMedal=idx; sMedal();
+      floats.push({ x:W*0.5, y:H*0.30, t:m.name+'章！', col:m.col, life:1.2, big:true }); } }
+  }
+  function die(){
+    if(state!=='playing') return;
+    state='over'; deathT=0; shake=10; flash=0.9;
+    if(score>best){ best=score; try{localStorage.setItem('flap_best',String(best));}catch(e){} }
+    burst(birdX,bird.y,'#fca5a5',18); sDie();
+  }
+
+  // ---------- 渲染 ----------
+  function lerpCol(a,b,t){ return [Math.round(a[0]+(b[0]-a[0])*t),Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t)]; }
+  function skyCols(s){
+    // 白昼 → 黄昏 → 夜 → 极光，随分数推进
+    var stops=[
+      {t:0,  top:[126,200,240], bot:[196,232,240]},
+      {t:12, top:[247,183,120], bot:[250,214,165]},
+      {t:28, top:[46,58,110],   bot:[92,86,150]},
+      {t:50, top:[16,32,64],    bot:[30,80,96]}
+    ];
+    var a=stops[0],b=stops[stops.length-1];
+    for(var i=0;i<stops.length-1;i++){ if(s>=stops[i].t && s<stops[i+1].t){ a=stops[i]; b=stops[i+1];
+      var tt=(s-a.t)/(b.t-a.t); return { top:lerpCol(a.top,b.top,tt), bot:lerpCol(a.bot,b.bot,tt) }; } }
+    if(s>=stops[stops.length-1].t) return { top:stops[stops.length-1].top, bot:stops[stops.length-1].bot };
+    return { top:stops[0].top, bot:stops[0].bot };
+  }
+
+  function draw(){
+    var sc = cssH/H;                       // 逻辑→屏幕缩放（以高度为准）
+    var ox = (cssW - W*sc)/2;              // 水平居中偏移
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.clearRect(0,0,cssW,cssH);
+
+    // 抖动
+    var shx=0, shy=0;
+    if(shake>0){ shx=(Math.random()-0.5)*shake; shy=(Math.random()-0.5)*shake; }
+    ctx.save(); ctx.translate(ox+shx, shy); ctx.scale(sc,sc);
+
+    // 天空
+    var sk=skyCols(score);
+    var grd=ctx.createLinearGradient(0,0,0,H);
+    grd.addColorStop(0,'rgb('+sk.top.join(',')+')');
+    grd.addColorStop(1,'rgb('+sk.bot.join(',')+')');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+    // 远景星点（夜里显现）
+    if(score>=20){ var night=Math.min(1,(score-20)/16);
+      ctx.fillStyle='rgba(255,255,255,'+(0.6*night)+')';
+      for(var st=0; st<26; st++){ var sx=((st*97.3+scrollX*0.15)%W); var sy=(st*53.7)%(H-GROUND-40)+10;
+        ctx.fillRect(sx, sy, 2,2); }
+    }
+
+    // 柱子（发光苇柱）
+    for(var i=0;i<pipes.length;i++){
+      var pi=pipes[i];
+      var topH=pi.cy-pi.g/2, botY=pi.cy+pi.g/2;
+      drawPillar(pi.x, 0, topH, true);
+      drawPillar(pi.x, botY, (H-GROUND)-botY, false);
+      // 光点
+      if(!pi.mote.taken){
+        var mx=pi.x+pi.mote.dx, my=pi.mote.dy;
+        var pulse=0.5+0.5*Math.sin((scrollX*0.05)+i);
+        ctx.save();
+        var mg=ctx.createRadialGradient(mx,my,0,mx,my,14);
+        mg.addColorStop(0,'rgba(255,240,170,'+(0.9)+')');
+        mg.addColorStop(1,'rgba(255,240,170,0)');
+        ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,14,0,6.283); ctx.fill();
+        ctx.fillStyle='#fff6cf'; ctx.beginPath(); ctx.arc(mx,my,3.2+pulse*1.4,0,6.283); ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // 地面
+    ctx.fillStyle='#20301f'; ctx.fillRect(0,H-GROUND,W,GROUND);
+    ctx.fillStyle='#2c4327';
+    var off=(scrollX% 40);
+    for(var gx2=-40; gx2<W+40; gx2+=40){ ctx.fillRect(gx2-off, H-GROUND, 22, 8); }
+    ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(0,H-GROUND,W,3);
+
+    // 粒子
+    for(var m=0;m<motes.length;m++){ var mo=motes[m]; var al=Math.max(0,Math.min(1,mo.life*1.6));
+      ctx.fillStyle=(mo.col.indexOf('rgba')===0)? (mo.col+al+')') : mo.col;
+      ctx.globalAlpha= (mo.col.indexOf('rgba')===0)?1:al;
+      ctx.beginPath(); ctx.arc(mo.x,mo.y,mo.r,0,6.283); ctx.fill(); ctx.globalAlpha=1;
+    }
+
+    // 小家伙
+    drawBird();
+
+    // 飘字
+    for(var f=0;f<floats.length;f++){ var fl=floats[f];
+      ctx.globalAlpha=Math.max(0,Math.min(1,fl.life)); ctx.fillStyle=fl.col;
+      ctx.font=(fl.big?'bold 30px ':'bold 20px ')+'sans-serif'; ctx.textAlign='center';
+      ctx.fillText(fl.t, fl.x, fl.y); ctx.globalAlpha=1;
+    }
+
+    ctx.restore();
+
+    // 白闪
+    if(flash>0){ ctx.fillStyle='rgba(255,255,255,'+(flash*0.25)+')'; ctx.fillRect(0,0,cssW,cssH); }
+
+    // HUD（屏幕空间）
+    drawHUD();
+  }
+
+  function drawPillar(x,y,h,isTop){
+    if(h<=0) return;
+    ctx.save();
+    var g=ctx.createLinearGradient(x,0,x+PIPE_W,0);
+    g.addColorStop(0,'#3f8f6b'); g.addColorStop(0.5,'#5fbf8f'); g.addColorStop(1,'#348059');
+    ctx.fillStyle=g;
+    roundRectPath(x,y,PIPE_W,h,8);
+    ctx.fill();
+    // 唇口
+    var lipY = isTop ? (y+h-16) : y;
+    ctx.fillStyle='#67c99a';
+    roundRectPath(x-5, lipY, PIPE_W+10, 16, 6); ctx.fill();
+    // 高光
+    ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(x+7,y+ (isTop?4:6), 6, Math.max(4,h-10));
+    ctx.restore();
+  }
+  function roundRectPath(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  function drawBird(){
+    ctx.save();
+    ctx.translate(birdX, bird.y); ctx.rotate(bird.rot);
+    // 光晕
+    var gg=ctx.createRadialGradient(0,0,0,0,0,BIRD_R+10);
+    gg.addColorStop(0,'rgba(255,224,150,0.55)'); gg.addColorStop(1,'rgba(255,224,150,0)');
+    ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(0,0,BIRD_R+10,0,6.283); ctx.fill();
+    // 身体
+    var bg=ctx.createRadialGradient(-4,-4,2,0,0,BIRD_R);
+    bg.addColorStop(0,'#fff3c4'); bg.addColorStop(1,'#f6b93b');
+    ctx.fillStyle=bg; ctx.beginPath(); ctx.arc(0,0,BIRD_R,0,6.283); ctx.fill();
+    // 翅膀（随拍翼上下）
+    var wf=(state==='playing'&&bird.vy<0)? -6 : 3;
+    ctx.fillStyle='#f39c12'; ctx.beginPath();
+    ctx.ellipse(-3, wf, 9, 6, -0.4, 0, 6.283); ctx.fill();
+    // 眼睛 + 嘴
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(6,-4,4.5,0,6.283); ctx.fill();
+    ctx.fillStyle='#243'; ctx.beginPath(); ctx.arc(7.4,-4,2.2,0,6.283); ctx.fill();
+    ctx.fillStyle='#e67e22'; ctx.beginPath(); ctx.moveTo(12,-1); ctx.lineTo(20,1.5); ctx.lineTo(12,4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawHUD(){
+    ctx.textAlign='center';
+    // 分数（大）
+    if(state!=='ready'){
+      ctx.font='bold 52px sans-serif';
+      ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.35)'; ctx.strokeText(String(score), cssW/2, 74);
+      ctx.fillStyle='#fff'; ctx.fillText(String(score), cssW/2, 74);
+    }
+    // 静音键
+    var r=muteBtnRect();
+    ctx.fillStyle='rgba(0,0,0,0.28)'; roundRectPath(r.x,r.y,r.w,r.h,8); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='16px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(muted?'🔇':'🔊', r.x+r.w/2, r.y+r.h/2+6);
+
+    // 光点 / 连穿（左上）
+    ctx.textAlign='left'; ctx.font='bold 14px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.fillText('✦ 光点 '+motesGot+(combo>1?('   连穿 x'+Math.min(combo,5)):''), 14, 28);
+
+    if(state==='ready') drawReady();
+    if(state==='over') drawOver();
+  }
+
+  function drawReady(){
+    ctx.textAlign='center';
+    panel(cssW/2, cssH*0.5, 300, 176);
+    ctx.fillStyle='#fff'; ctx.font='bold 26px sans-serif';
+    ctx.fillText('穿隙 · 越飞越远', cssW/2, cssH*0.5-52);
+    ctx.font='15px sans-serif'; ctx.fillStyle='rgba(255,255,255,0.9)';
+    ctx.fillText('点击 / 空格 让它拍翼上升', cssW/2, cssH*0.5-20);
+    ctx.fillText('穿过缝隙 +1 · 顺手收光点连穿加分', cssW/2, cssH*0.5+4);
+    ctx.fillText('别撞柱子、别落地', cssW/2, cssH*0.5+28);
+    ctx.fillStyle='#ffe08a'; ctx.font='bold 17px sans-serif';
+    ctx.fillText('点一下，起飞', cssW/2, cssH*0.5+64);
+    if(best>0){ ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.font='13px sans-serif';
+      ctx.fillText('最好成绩 '+best, cssW/2, cssH*0.5+90); }
+  }
+
+  function drawOver(){
+    ctx.textAlign='center';
+    panel(cssW/2, cssH*0.46, 300, 216);
+    var y=cssH*0.46;
+    ctx.fillStyle='#fff'; ctx.font='bold 24px sans-serif';
+    ctx.fillText('落地了', cssW/2, y-72);
+    var md=medalFor(score);
+    if(md){ ctx.fillStyle=md.col; ctx.beginPath(); ctx.arc(cssW/2, y-30, 24, 0, 6.283); ctx.fill();
+      ctx.fillStyle='#2a2a2a'; ctx.font='bold 20px sans-serif'; ctx.fillText(md.name, cssW/2, y-23);
+      ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.font='12px sans-serif'; ctx.fillText('获得 '+md.name+' 章', cssW/2, y+4);
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.font='13px sans-serif';
+      ctx.fillText('再穿 '+(5-score)+' 个缝隙就能拿铜章', cssW/2, y-24);
+    }
+    ctx.fillStyle='#fff'; ctx.font='bold 30px sans-serif';
+    ctx.fillText('本次 '+score, cssW/2, y+42);
+    ctx.fillStyle= (score>=best&&score>0)?'#ffe08a':'rgba(255,255,255,0.8)'; ctx.font='15px sans-serif';
+    ctx.fillText((score>=best&&score>0?'新纪录！ ':'最好 ')+best+'   ✦'+motesGot, cssW/2, y+68);
+    ctx.fillStyle='#a7f3d0'; ctx.font='bold 16px sans-serif';
+    ctx.fillText('点击再来一次', cssW/2, y+100);
+  }
+
+  function panel(cx,cy,w,h){
+    ctx.save();
+    ctx.fillStyle='rgba(18,26,44,0.72)';
+    roundRectPath(cx-w/2, cy-h/2, w, h, 16); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.14)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---------- 主循环 ----------
+  var last=0, raf=null;
+  function loop(ts){
+    if(!last) last=ts;
+    var dt=(ts-last)/1000; last=ts;
+    if(dt>0.05) dt=0.05;
+    update(dt); draw();
+    raf=window.requestAnimationFrame(loop);
+  }
+
+  // ---------- 启动 ----------
+  resize();
+  reset(true);
+
+  // 测试钩子
+  window.__GAME = {
+    get state(){ return state; },
+    get score(){ return score; },
+    get best(){ return best; },
+    get combo(){ return combo; },
+    get motes(){ return motesGot; },
+    get bird(){ return bird; },
+    get pipes(){ return pipes; },
+    get W(){ return W; }, get H(){ return H; }, get birdX(){ return birdX; },
+    get GROUND(){ return GROUND; },
+    reset:reset, flap:flap, update:update, draw:draw,
+    setMuted:function(v){ muted=!!v; },
+    isMuted:function(){ return muted; }
+  };
+
+  if(typeof window.requestAnimationFrame==='function'){
+    raf=window.requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
