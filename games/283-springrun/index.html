@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#E3DDCD">
+<title>引泉 · 石上苔</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: linear-gradient(#E5DFCF, #D4CDBE);
+    font-family: "KaiTi","STKaiti","PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif;
+    color: #46565E;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 480px; height: 900px;
+    transform-origin: 50% 50%;
+    transform: translate(-50%,-50%);
+    background: #F2EFE4;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 18px 60px rgba(50,62,70,0.28);
+  }
+  #cv { display: block; width: 480px; height: 900px; position: absolute; left: 0; top: 0; }
+
+  /* ---------- 顶部信息 ---------- */
+  #hud {
+    position: absolute; left: 0; top: 0; width: 480px; height: 112px;
+    pointer-events: none; z-index: 3;
+    padding: 12px 16px 0;
+  }
+  .hrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .hbrand { font-size: 25px; font-weight: 700; letter-spacing: 3px; color: #3F4F57; }
+  .hbrand small { font-size: 13px; letter-spacing: 1px; color: #7C8C92; margin-left: 6px; font-weight: 400; }
+  .hlv { font-size: 13px; color: #7C8C92; letter-spacing: 1px; }
+  .chips { display: flex; gap: 7px; margin-top: 12px; }
+  .chip {
+    flex: 1; background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(74,90,98,0.14);
+    border-radius: 9px; padding: 5px 0 4px; text-align: center;
+  }
+  .chip .k { font-size: 10px; color: #8A989E; letter-spacing: 2px; display: block; }
+  .chip .v { font-size: 17px; font-weight: 700; color: #3F4F57; letter-spacing: 0.5px; }
+  .chip.moss .v { color: #6B9159; }
+  .chip.flw  .v { color: #C9747F; }
+  .chip.src  .v { color: #4E93A8; }
+
+  /* ---------- 底部条 ---------- */
+  #bar {
+    position: absolute; left: 0; bottom: 0; width: 480px; height: 82px;
+    z-index: 30; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+  }
+  #hint { font-size: 12px; color: #8A989E; letter-spacing: 0.6px; line-height: 1.6; max-width: 300px; }
+  .bbtn {
+    font-family: inherit; font-size: 13px; color: #5D6E76;
+    background: rgba(255,255,255,0.72); border: 1px solid rgba(74,90,98,0.18);
+    border-radius: 9px; padding: 7px 12px; margin-left: 8px; cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .bbtn:active { background: rgba(255,255,255,0.95); transform: translateY(1px); }
+
+  /* ---------- 光标 ---------- */
+  #cur {
+    position: absolute; width: 54px; height: 54px; z-index: 4;
+    border: 2px solid rgba(78,147,168,0.85); border-radius: 9px;
+    pointer-events: none; display: none;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.5) inset;
+  }
+
+  /* ---------- 遮罩 ---------- */
+  .ov {
+    position: absolute; left: 0; top: 0; width: 480px; height: 900px;
+    z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(242,239,228,0.90);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    padding: 0 40px; text-align: center;
+  }
+  .ov.hide { display: none; }
+  .ov h1 { font-size: 40px; letter-spacing: 8px; margin: 0 0 6px; color: #3F4F57; font-weight: 700; }
+  .ov h2 { font-size: 15px; letter-spacing: 4px; margin: 0 0 26px; color: #8A989E; font-weight: 400; }
+  .ov p { font-size: 14.5px; line-height: 2.1; color: #5D6E76; margin: 0 0 8px; letter-spacing: 0.8px; }
+  .ov p .em { color: #6B9159; }
+  .ov p .fl { color: #C9747F; }
+  .big {
+    font-family: inherit; font-size: 19px; letter-spacing: 6px; color: #F2EFE4;
+    background: #6B9159; border: none; border-radius: 11px;
+    padding: 14px 46px; margin-top: 26px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(107,145,89,0.32);
+  }
+  .big:active { transform: translateY(1px); }
+  .ghost {
+    font-family: inherit; font-size: 14px; letter-spacing: 3px; color: #7C8C92;
+    background: transparent; border: 1px solid rgba(74,90,98,0.22); border-radius: 10px;
+    padding: 10px 26px; margin-top: 12px; cursor: pointer;
+  }
+  .tbl { width: 300px; margin: 4px 0 6px; }
+  .tbl .tr { display: flex; justify-content: space-between; padding: 6px 2px;
+             border-bottom: 1px dashed rgba(74,90,98,0.16); font-size: 14px; }
+  .tbl .tr:last-child { border-bottom: none; }
+  .tbl .tr .k { color: #8A989E; letter-spacing: 2px; }
+  .tbl .tr .v { color: #3F4F57; font-weight: 700; }
+  .tbl .tr .v.m { color: #6B9159; }
+  .tbl .tr .v.f { color: #C9747F; }
+  .line { font-size: 14px; color: #7C8C92; letter-spacing: 1.4px; margin-top: 18px; font-style: italic; }
+  .best { font-size: 12px; color: #A0ACB1; letter-spacing: 2px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv" width="480" height="900"></canvas>
+
+  <div id="hud">
+    <div class="hrow">
+      <div class="hbrand">引泉<small>石上苔</small></div>
+      <div class="hlv">第 <span id="lv">1</span> 泉</div>
+    </div>
+    <div class="chips">
+      <div class="chip"><span class="k">分</span><span class="v" id="vScore">0</span></div>
+      <div class="chip moss"><span class="k">苔痕</span><span class="v" id="vMoss">0</span></div>
+      <div class="chip flw"><span class="k">花开</span><span class="v" id="vFlw">0/3</span></div>
+      <div class="chip src"><span class="k">余泉</span><span class="v" id="vSrc">90</span></div>
+    </div>
+  </div>
+
+  <div id="cur"></div>
+
+  <!-- 开场 -->
+  <div class="ov" id="ovStart">
+    <h1>引泉</h1>
+    <h2>石 上 苔</h2>
+    <p>石梁上的泉眼开始滴水。<br>
+       点一下<span class="em">石渠</span>就转个向，把水引向还没湿过的石面。<br>
+       水过之处会慢慢<span class="em">长出苔</span>；苔上的水跑得更快。<br>
+       喂饱<span class="fl">石碗</span>，它会开出一朵花，奏一个音。</p>
+    <p style="color:#A0ACB1;font-size:13px">泉水有限，润到多少算多少 —— 没有输。</p>
+    <button class="big" id="btnStart">引　泉</button>
+    <div class="best" id="bestStart"></div>
+  </div>
+
+  <!-- 结算 -->
+  <div class="ov hide" id="ovEnd">
+    <h2 style="font-size:20px;letter-spacing:6px;margin-bottom:18px">泉 歇 了</h2>
+    <div class="tbl">
+      <div class="tr"><span class="k">苔痕覆盖</span><span class="v m" id="eCov">0%</span></div>
+      <div class="tr"><span class="k">开花</span><span class="v f" id="eFlw">0 / 3</span></div>
+      <div class="tr"><span class="k">最长连开</span><span class="v" id="eCombo">×1</span></div>
+      <div class="tr"><span class="k">落潭</span><span class="v" id="eLost">0 滴</span></div>
+      <div class="tr"><span class="k">覆盖奖励</span><span class="v m" id="eBonus">+0</span></div>
+      <div class="tr"><span class="k">本关得分</span><span class="v" id="eScore">0</span></div>
+    </div>
+    <div class="line" id="eLine"></div>
+    <button class="big" id="btnNext">再 引 一 泉</button>
+    <button class="ghost" id="btnAgain">重来本关</button>
+    <div class="best" id="bestEnd"></div>
+  </div>
+
+  <!-- 常驻按钮（放在遮罩之后，避免被挡住点不到） -->
+  <div id="bar">
+    <div id="hint">点石渠改水路 · 水过处生苔 · 喂饱石碗开花</div>
+    <div>
+      <button class="bbtn" id="btnMute">♪ 开</button>
+      <button class="bbtn" id="btnRetry">重来</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.SpringGame, R = window.SpringRender;
+  var W = G.W, H = G.H;
+
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var curEl = document.getElementById('cur');
+
+  var el = {
+    lv: document.getElementById('lv'),
+    score: document.getElementById('vScore'),
+    moss: document.getElementById('vMoss'),
+    flw: document.getElementById('vFlw'),
+    src: document.getElementById('vSrc'),
+    ovStart: document.getElementById('ovStart'),
+    ovEnd: document.getElementById('ovEnd'),
+    eCov: document.getElementById('eCov'),
+    eFlw: document.getElementById('eFlw'),
+    eCombo: document.getElementById('eCombo'),
+    eLost: document.getElementById('eLost'),
+    eBonus: document.getElementById('eBonus'),
+    eScore: document.getElementById('eScore'),
+    eLine: document.getElementById('eLine'),
+    bestStart: document.getElementById('bestStart'),
+    bestEnd: document.getElementById('bestEnd')
+  };
+
+  // ---------- 自适应 ----------
+  var K = 1;
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    K = Math.min(vw / W, vh / H);
+    if (!isFinite(K) || K <= 0) K = 1;
+    stage.style.transform = 'translate(-50%,-50%) scale(' + K + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var eff = Math.min(dpr * K, 3);
+    if (eff < 1) eff = 1;
+    var bw = Math.round(W * eff), bh = Math.round(H * eff);
+    if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
+  // ---------- 音 ----------
+  var AC = null, MASTER = null, muted = false;
+  try { muted = localStorage.getItem('springrun_mute') === '1'; } catch (e) { }
+  function ac() {
+    if (AC) return AC;
+    try {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      AC = new Ctor();
+      MASTER = AC.createGain();
+      MASTER.gain.value = muted ? 0 : 0.5;
+      MASTER.connect(AC.destination);
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  function resume() { var a = ac(); if (a && a.state === 'suspended') a.resume(); }
+  function tone(freq, dur, type, vol, delay, glide) {
+    var a = ac(); if (!a || muted) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * glide), t0 + dur);
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(gn); gn.connect(MASTER);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function note(i, combo) {
+    var f = G.PENTA[i % 5];
+    tone(f, 1.05, 'sine', 0.30, 0);
+    tone(f * 2, 0.55, 'sine', 0.10, 0.015);
+    tone(f * 1.5, 0.80, 'triangle', 0.055, 0.03);
+    if (combo >= 2) tone(f * 3, 0.45, 'sine', 0.07, 0.09);
+  }
+  var lastPlink = -9, lastTick = -9, T = 0;
+  function sfxPlink() {
+    if (T - lastPlink < 0.11) return; lastPlink = T;
+    tone(300 + Math.random() * 120, 0.16, 'sine', 0.075, 0, 0.45);
+  }
+  function sfxTurn() {
+    if (T - lastTick < 0.03) return; lastTick = T;
+    tone(760, 0.045, 'triangle', 0.045);
+  }
+  function sfxEnd() {
+    var seq = [0, 2, 3, 4];
+    for (var i = 0; i < seq.length; i++) tone(G.PENTA[seq[i]], 1.3, 'sine', 0.16, i * 0.14);
+  }
+
+  // ---------- 最佳记录 ----------
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('springrun_best_v1') || '0', 10) || 0; } catch (e) { }
+  function saveBest(v) {
+    if (v > best) { best = v; try { localStorage.setItem('springrun_best_v1', String(v)); } catch (e) { } }
+  }
+  function bestTxt() { return best > 0 ? '历来最高 · ' + best + ' 分' : ''; }
+
+  // ---------- 局面 ----------
+  var level = 1, st = null, mode = 'ready';
+
+  var LINES = [
+    '泉歇了。石上留着一条湿痕。',
+    '水走了，苔还在。',
+    '开过的花不谢，只是安静下来。',
+    '你引过的路，石头记着。',
+    '潭里多了一点水，山上少了一点。',
+    '剩下的那些格子，明年再来。'
+  ];
+
+  function newGame(lv) {
+    level = lv;
+    st = G.create(lv, (Date.now() ^ (lv * 2654435761)) >>> 0);
+    R.reset(st);
+    mode = 'playing';
+    el.ovStart.classList.add('hide');
+    el.ovEnd.classList.add('hide');
+    el.lv.textContent = lv;
+    syncHUD();
+    resume();
+  }
+
+  function syncHUD() {
+    var s = G.stats(st);
+    el.score.textContent = s.score;
+    el.moss.textContent = s.moss + '/' + s.wettable;
+    el.flw.textContent = s.blooms + '/' + s.seedTotal;
+    el.src.textContent = s.left;
+  }
+
+  function finish() {
+    var s = G.stats(st);
+    mode = 'over';
+    el.eCov.textContent = Math.round(s.coverage * 100) + '%（' + s.moss + '/' + s.wettable + '）';
+    el.eFlw.textContent = s.blooms + ' / ' + s.seedTotal;
+    el.eCombo.textContent = '×' + Math.max(1, s.bestCombo);
+    el.eLost.textContent = s.lost + ' 滴';
+    el.eBonus.textContent = '+' + s.bonus;
+    el.eScore.textContent = s.score;
+    el.eLine.textContent = LINES[Math.floor(Math.random() * LINES.length)];
+    saveBest(s.score);
+    el.bestEnd.textContent = bestTxt();
+    el.bestStart.textContent = bestTxt();
+    el.ovEnd.classList.remove('hide');
+    sfxEnd();
+  }
+
+  // ---------- 输入 ----------
+  function pos(e) {
+    var b = cv.getBoundingClientRect();
+    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return {
+      x: (t.clientX - b.left) / (b.width / W),
+      y: (t.clientY - b.top) / (b.height / H)
+    };
+  }
+  function tap(e) {
+    resume();
+    if (mode !== 'playing') return;
+    var p = pos(e);
+    var h = G.hitTest(st, p.x, p.y);
+    if (!h) return;
+    var cell = G.cellAt(st, h.c, h.r);
+    if (!cell) return;
+    if (cell.kind !== 'pipe' || cell.fixed) { R.nudge(h.c, h.r); tone(180, 0.09, 'triangle', 0.05); return; }
+    if (G.rotate(st, h.c, h.r)) sfxTurn();
+    hideCur();
+  }
+  cv.addEventListener('pointerdown', function (e) { e.preventDefault(); e.__p = 1; tap(e); }, { passive: false });
+  cv.addEventListener('mousedown', function (e) { if (!e.__p) tap(e); });
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // 键盘
+  var kc = { c: 3, r: 4, on: false };
+  function showCur() {
+    kc.on = true;
+    curEl.style.display = 'block';
+    curEl.style.left = (G.BX + kc.c * G.CELL) + 'px';
+    curEl.style.top = (G.BY + kc.r * G.CELL) + 'px';
+  }
+  function hideCur() { kc.on = false; curEl.style.display = 'none'; }
+  window.addEventListener('keydown', function (e) {
+    var k = e.key;
+    if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown' ||
+        k === ' ' || k === 'Enter') e.preventDefault();
+    if (mode === 'ready') { if (k === 'Enter' || k === ' ') { resume(); newGame(1); } return; }
+    if (mode === 'over') {
+      if (k === 'Enter' || k === ' ') { resume(); newGame(level + 1); }
+      else if (k === 'r' || k === 'R') { resume(); newGame(level); }
+      return;
+    }
+    if (k === 'ArrowLeft') { kc.c = Math.max(0, kc.c - 1); showCur(); }
+    else if (k === 'ArrowRight') { kc.c = Math.min(G.COLS - 1, kc.c + 1); showCur(); }
+    else if (k === 'ArrowUp') { kc.r = Math.max(0, kc.r - 1); showCur(); }
+    else if (k === 'ArrowDown') { kc.r = Math.min(G.ROWS - 1, kc.r + 1); showCur(); }
+    else if (k === ' ' || k === 'Enter') {
+      if (G.rotate(st, kc.c, kc.r)) sfxTurn();
+      else { R.nudge(kc.c, kc.r); tone(180, 0.09, 'triangle', 0.05); }
+      showCur();
+    }
+    else if (k === 'r' || k === 'R') newGame(level);
+    else if (k === 'm' || k === 'M') toggleMute();
+  });
+
+  // ---------- 按钮 ----------
+  document.getElementById('btnStart').addEventListener('click', function () { resume(); newGame(1); });
+  document.getElementById('btnNext').addEventListener('click', function () { resume(); newGame(level + 1); });
+  document.getElementById('btnAgain').addEventListener('click', function () { resume(); newGame(level); });
+  document.getElementById('btnRetry').addEventListener('click', function () { resume(); newGame(level); });
+  function toggleMute() {
+    muted = !muted;
+    if (MASTER) MASTER.gain.value = muted ? 0 : 0.5;
+    document.getElementById('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+    try { localStorage.setItem('springrun_mute', muted ? '1' : '0'); } catch (e) { }
+  }
+  document.getElementById('btnMute').addEventListener('click', toggleMute);
+  document.getElementById('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+
+  // ---------- 主循环 ----------
+  var last = 0, hudT = 0;
+  function frame(ts) {
+    var dt = last ? (ts - last) / 1000 : 0.016;
+    last = ts;
+    if (dt > 0.06) dt = 0.06;
+    T += dt;
+
+    if (st && mode === 'playing') {
+      // 先 update 产生事件 → 再取事件播音效 → 最后才交给渲染（渲染会清空事件流）
+      G.update(st, dt);
+      for (var i = 0; i < st.events.length; i++) {
+        var e = st.events[i];
+        if (e.type === 'bloom') note(e.c, e.d);
+        else if (e.type === 'plink') sfxPlink();
+      }
+      hudT += dt;
+      if (hudT > 0.09) { hudT = 0; syncHUD(); }
+      if (st.over) { syncHUD(); finish(); }
+    }
+
+    if (st) R.draw(ctx, st, dt);
+    requestAnimationFrame(frame);
+  }
+
+  fit();
+  st = G.create(1, (Date.now() ^ 0x9e3779b9) >>> 0);
+  R.reset(st);
+  mode = 'ready';
+  syncHUD();
+  el.bestStart.textContent = bestTxt();
+  requestAnimationFrame(frame);
+
+  // 探针
+  window.__game = {
+    G: G, R: R,
+    get st() { return st; },
+    get mode() { return mode; },
+    newGame: newGame,
+    K: function () { return K; }
+  };
+})();
+</script>
+</body>
+</html>
