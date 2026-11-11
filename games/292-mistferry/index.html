@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="BvRag9UPjZpiNuaWmc7mo6">
+<head data-page-node-id="iBlG9UaXg9oFB4OrddYDnl"><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" data-page-node-id="sOfUf0tIQNnnhOFc943Dwt">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" data-page-node-id="HPNDKjBncQd8FgnTOdoIpu">
+<title>雾江 · 无刹渡</title>
+<style>
+  :root{
+    --paper:#F2EDE3; --ink:#2B2B2B; --ink2:#4A4E52;
+    --slate:#7A8085; --verm:#C1473A; --jade:#6FA287; --line:#C9C4B6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:#DED8CA;overflow:hidden;
+    font-family:"Songti SC","SimSun","Noto Serif CJK SC",serif;color:var(--ink)}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{width:600px;height:880px;flex:0 0 auto;position:relative;
+    background:var(--paper);border-radius:10px;overflow:hidden;
+    box-shadow:0 12px 44px rgba(40,38,32,.22);transform-origin:center center}
+
+  #hud{height:54px;display:flex;align-items:center;gap:14px;padding:0 16px;
+    border-bottom:1px solid var(--line);background:linear-gradient(#F5F1E8,#EFE9DD)}
+  #hud .lv{font-size:16px;letter-spacing:2px;min-width:110px}
+  #pwWrap{flex:1;display:flex;align-items:center;gap:8px}
+  #pwBar{flex:1;height:9px;background:#DCD5C6;border-radius:5px;overflow:hidden}
+  #pwBar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8FA0A3,#6FA287);
+    border-radius:5px;transition:width .12s linear}
+  #pwTxt{font-size:13px;color:var(--ink2);min-width:56px;text-align:right;font-variant-numeric:tabular-nums}
+  #hud .rt{text-align:right;font-size:14px;color:var(--ink2);min-width:106px;font-variant-numeric:tabular-nums}
+  #hud .rt b{font-size:17px;color:var(--ink);font-weight:600}
+  #hud .rt i{color:var(--verm);font-style:normal;font-weight:600}
+
+  canvas{display:block;width:600px;height:760px}
+
+  #ctl{height:66px;display:flex;gap:8px;padding:9px 12px;align-items:stretch;
+    border-top:1px solid var(--line);background:linear-gradient(#EFE9DD,#E8E1D3)}
+  #ctl button{flex:1;border:1px solid #CFC8B8;background:#F7F3EA;color:var(--ink);
+    border-radius:8px;font-family:inherit;font-size:15px;letter-spacing:1px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;
+    user-select:none;touch-action:none;transition:background .08s,transform .06s}
+  #ctl button:active,#ctl button.on{background:#E2DBCB;transform:translateY(1px)}
+  #ctl button small{font-size:10px;color:var(--slate);letter-spacing:0}
+  #ctl button.k2{flex:0 0 84px;color:var(--ink2)}
+
+  .ov{position:absolute;inset:0;background:rgba(242,237,227,.965);z-index:20;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 30px;text-align:center}
+  .ov.hide{display:none}
+  .ov h1{font-size:31px;margin:0 0 6px;letter-spacing:7px;font-weight:600}
+  .ov .sub{font-size:13px;color:var(--slate);letter-spacing:3px;margin-bottom:18px}
+  .ov p{font-size:14px;line-height:2.0;color:var(--ink2);margin:2px 0;max-width:430px}
+  .ov p em{font-style:normal;color:var(--verm)}
+  .ov .keys{font-size:13px;color:var(--slate);margin:12px 0 4px;line-height:1.9}
+  .ov .keys b{color:var(--ink);font-weight:600}
+  .btn{margin-top:18px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);
+    font-family:inherit;font-size:16px;letter-spacing:4px;padding:11px 30px;border-radius:6px;cursor:pointer}
+  .btn.ghost{background:transparent;color:var(--ink2);border-color:#C6BFB0;margin-left:10px}
+  .btn:active{opacity:.82}
+  #grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;width:430px}
+  #grid button{border:1px solid #CFC8B8;background:#F7F3EA;border-radius:7px;padding:8px 2px 6px;
+    font-family:inherit;cursor:pointer;color:var(--ink);line-height:1.35}
+  #grid button:disabled{opacity:.36;cursor:not-allowed}
+  #grid button span{display:block;font-size:13px}
+  #grid button i{display:block;font-size:11px;color:var(--verm);font-style:normal;height:14px;letter-spacing:1px}
+  #grid button small{display:block;font-size:10px;color:var(--slate)}
+  .stat{display:grid;grid-template-columns:auto auto;gap:4px 20px;font-size:14px;
+    margin:12px 0 2px;color:var(--ink2)}
+  .stat b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .stars{font-size:30px;color:var(--verm);letter-spacing:8px;height:38px}
+  .endline{font-size:14px;color:var(--slate);margin-top:14px;letter-spacing:2px}
+  .best{font-size:12px;color:var(--slate);margin-top:8px;letter-spacing:1px}
+
+  #snd{position:absolute;right:12px;bottom:76px;z-index:30;width:34px;height:34px;
+    border:1px solid #CFC8B8;background:rgba(247,243,234,.92);border-radius:50%;
+    font-size:15px;cursor:pointer;color:var(--ink2);line-height:1}
+  #hint{position:absolute;left:0;right:0;top:62px;z-index:15;text-align:center;
+    font-size:13px;color:var(--slate);letter-spacing:2px;pointer-events:none;
+    opacity:0;transition:opacity .5s}
+  #hint.show{opacity:1}
+</style>
+</head>
+<body data-page-node-id="HSYFoOmLAgK1uDgcdfJ2cP">
+<div id="wrap" data-page-node-id="a2muJBHEVKPIxAU5KJKPck"><div id="stage" data-page-node-id="8TMT8nG0rUdQwn8a612Vg7">
+
+  <div id="hud" data-page-node-id="SAB589KYbCvCThEfmDvnBO">
+    <div class="lv" id="lvName" data-page-node-id="OHF1Hw9srnuM2efCavJ3bH">一渡 · 试水</div>
+    <div id="pwWrap" data-page-node-id="fpnoOxIrpcDsnb8eV5kRUv"><div id="pwBar" data-page-node-id="AGioQ9fHMMljTj2TlKpCt6"><i data-page-node-id="3NClHF6IeIqP10cWJ9iBYb"></i></div><span id="pwTxt" data-page-node-id="BvGd6w8i4gOFj0yJVo4Bia">30 / 30</span></div>
+    <div class="rt" data-page-node-id="xoaM6UlBACVEBh81SSeRKG"><b id="score" data-page-node-id="xY2nlB5iqQhOX1r7yL5toH">0</b> · <i id="dockCnt" data-page-node-id="yigNwV1kVGAUBgRoatC0ku">0/2</i></div>
+  </div>
+
+  <canvas id="cv" data-page-node-id="SLkmO9FSgdH1QS0ttL08Ie"></canvas>
+  <div id="hint" data-page-node-id="bkrOIuUQVpzZOSb2YaufQm"></div>
+
+  <div id="ctl" data-page-node-id="QHsBOPopSFOmQWtr7mCCV3">
+    <button data-k="L" data-page-node-id="NKOUQPD20QvqXklEL8Mikz">◀ 左桨<small data-page-node-id="trZPO9V9SfLDuVZ5kMS0Eh">A / ←</small></button>
+    <button data-k="B" class="k2" data-page-node-id="a7kU8mjMoEipEik8vEhaTE">双桨 ▲<small data-page-node-id="GylzOcBRgtZ1HPrbt8OtaT">W / ↑</small></button>
+    <button data-k="V" class="k2" data-page-node-id="GfR5nMQub89Q7X4nhrDPah">反桨 ▼<small data-page-node-id="pkNZfKVp3DDZEK6WYTgX8f">S / ↓</small></button>
+    <button data-k="R" data-page-node-id="eCmB8UbACAIHvKEpk3DB0y">右桨 ▶<small data-page-node-id="BUnWumZHfHTHyDH0DeOYhn">D / →</small></button>
+  </div>
+
+  <button id="snd" title="静音" data-page-node-id="4uObcomQ3vhTmrezQZFJ2j">🔊</button>
+
+  <div class="ov" id="ovStart" data-page-node-id="ABsR83GxTkNmVEkZSZLaZE">
+    <h1 data-page-node-id="vDHSQEtFM8qfeQ1DfKC9se">雾江 · 无刹渡</h1>
+    <div class="sub" data-page-node-id="NCUDpxh8vNcdJuaSnXWO6G">MIST FERRY · 一叶无刹之舟</div>
+    <p data-page-node-id="rnDu9W4HOBGheQyOG5i3zS">江自己会流。你只有桨，<em data-page-node-id="3EQCJGyEPokDq5qX7UApIp">没有刹车</em>。</p>
+    <p data-page-node-id="P4VQllrfKzTgJAwKIo5dAc">唯一的减速，是收桨等水阻把你磨慢，再滑进岸边的洄湾。</p>
+    <p class="keys" data-page-node-id="bDgp7KI8Qxrw4BmbSHCAEk">
+      <b data-page-node-id="yJKsUeN9tSb7oM1GHoXfNC">◀ 左桨</b>（A / ←）船头带向左岸　<b data-page-node-id="lcO68VXzStNQwCDI4RdNiD">右桨 ▶</b>（D / →）带向右岸<br data-page-node-id="k31XWrmDl3XSRQT3PbbeB2">
+      <b data-page-node-id="hHzYTz1UrA0xW2rChrIE4B">双桨 ▲</b>（W / ↑）直冲不转向　<b data-page-node-id="OB950HR8CLrmJlTrHFCJTA">反桨 ▼</b>（S / ↓）倒推一桨<br data-page-node-id="dPV9t6Wrcf4ZZ6YSlV3R0S">
+      舟身光环转<em data-page-node-id="neJJlhxBIrYmmACZh7Esbi">青</em>，才慢到停得住 —— 越慢靠岸，分越高
+    </p>
+    <div id="grid" data-page-node-id="VTo1IAeK7iNUNSgq2TvCKl"></div>
+    <div class="best" id="startBest" data-page-node-id="qb2F8nN2l49w9qPbhOroxc"></div>
+  </div>
+
+  <div class="ov hide" id="ovEnd" data-page-node-id="vMrX78onAHzrBQ2XYDfvbQ">
+    <h1 id="endTitle" data-page-node-id="f1BiafPVJR5rNIsDuwOlPV">渡完</h1>
+    <div class="sub" id="endSub" data-page-node-id="XeZmjlHzsBV2yNVI6OQ8U7"></div>
+    <div class="stars" id="endStars" data-page-node-id="rNHvY079NWN58l5EE7UFtV"></div>
+    <div class="stat" id="endStat" data-page-node-id="6ghuBQy9mgHEBiCOSx0NJF"></div>
+    <div class="endline" id="endLine" data-page-node-id="Gf9He8cgWrDZzKe77mcYzU"></div>
+    <div data-page-node-id="cyMeIy6uAwz69N6ohySthF">
+      <button class="btn" id="btnNext" data-page-node-id="3VRZeDE3GkYQ5dMkDC6QQ3">下一渡</button>
+      <button class="btn ghost" id="btnRetry" data-page-node-id="C0rBSyUzDYe8v2hmHBdEDF">再渡一次</button>
+    </div>
+    <button class="btn ghost" id="btnMenu" style="margin-top:10px" data-page-node-id="ddeoKX7i1D3W5s6VGBgZpS">选关</button>
+  </div>
+
+</div></div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function(){
+'use strict';
+var G = window.MistFerry, MF = window.MF;
+var W = G.W, H = G.H, P = G.P;
+var STAGE_W = 600, STAGE_H = 880;
+
+var cv = document.getElementById('cv');
+var R = new MF.Render(cv);
+var st = null, li = 0, seed = 20260908, running = false, last = 0;
+var held = {}, memo = {};
+
+/* ---------- 存档 ---------- */
+var SKEY = 'mistferry.v1';
+function load(){
+  try{ var d = JSON.parse(localStorage.getItem(SKEY)||'{}');
+    d.best = d.best||{}; d.unlocked = d.unlocked||1; d.mute = !!d.mute; return d; }
+  catch(e){ return {best:{},unlocked:1,mute:false}; }
+}
+function save(){ try{ localStorage.setItem(SKEY, JSON.stringify(SAVE)); }catch(e){} }
+var SAVE = load();
+
+/* ---------- 音效（五声音阶） ---------- */
+var AC = null, master = null, muted = SAVE.mute;
+function ac(){
+  if(AC) return AC;
+  var C = window.AudioContext||window.webkitAudioContext; if(!C) return null;
+  AC = new C(); master = AC.createGain(); master.gain.value = muted?0:0.5; master.connect(AC.destination);
+  return AC;
+}
+function tone(freq, dur, type, vol, delay){
+  var a = ac(); if(!a||muted) return;
+  var t0 = a.currentTime + (delay||0);
+  var o = a.createOscillator(), g = a.createGain();
+  o.type = type||'sine'; o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol||0.16, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.03);
+}
+function noise(dur, freq, vol, q){
+  var a = ac(); if(!a||muted) return;
+  var len = Math.max(1, Math.floor(a.sampleRate*dur));
+  var buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for(var i=0;i<len;i++) d[i] = (Math.random()*2-1)*(1-i/len);
+  var src = a.createBufferSource(); src.buffer = buf;
+  var bp = a.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=q||1.1;
+  var g = a.createGain(); g.gain.value = vol||0.10;
+  src.connect(bp); bp.connect(g); g.connect(master); src.start();
+}
+var PENT = [0,2,4,7,9];
+function pent(n){ var o = PENT[((n%5)+5)%5] + 12*Math.floor(n/5); return 261.63*Math.pow(2, o/12); }
+
+function sfxPaddle(kind){ noise(kind==='B'?0.20:0.15, kind==='V'?420:760, 0.075, 0.9);
+  tone(kind==='B'?196:220, 0.10, 'sine', 0.035); }
+function sfxLand(note){
+  var f = pent(note);
+  tone(f, 1.5, 'sine', 0.16); tone(f*2, 1.1, 'sine', 0.06); tone(f*3, 0.7, 'sine', 0.025);
+  noise(0.22, 1500, 0.05, 1.6);
+}
+function sfxBump(what){ tone(what==='rock'?84:66, 0.22, 'triangle', 0.13); noise(0.14, 240, 0.09, 0.7); }
+function sfxFast(){ tone(150, 0.20, 'triangle', 0.09); noise(0.18, 500, 0.06, 0.8); }
+function sfxVortex(){
+  var a = ac(); if(!a||muted) return;
+  var t0 = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(420,t0); o.frequency.exponentialRampToValueAtTime(120,t0+0.5);
+  g.gain.setValueAtTime(0.11,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+0.55);
+  o.connect(g); g.connect(master); o.start(t0); o.stop(t0+0.6);
+}
+function sfxEnd(kind){
+  var seq = kind==='clear' ? [0,2,4,7] : [4,2,0];
+  for(var i=0;i<seq.length;i++) tone(pent(seq[i]), 1.2, 'sine', 0.11, i*0.17);
+}
+
+/* 事件 → 音效（必须在渲染层清空 events 之前消费） */
+function playEvents(evs){
+  for(var i=0;i<evs.length;i++){
+    var e = evs[i];
+    if(e.t==='paddle') sfxPaddle(e.kind);
+    else if(e.t==='land') sfxLand(e.note);
+    else if(e.t==='bump') sfxBump(e.what);
+    else if(e.t==='fast') sfxFast();
+    else if(e.t==='vortex') sfxVortex();
+    else if(e.t==='end') sfxEnd(e.kind);
+  }
+}
+
+/* ---------- 缩放 ---------- */
+function fit(){
+  var k = Math.min(window.innerWidth/STAGE_W, window.innerHeight/STAGE_H);
+  if(k > 1.16) k = 1.16;
+  document.getElementById('stage').style.transform = 'scale('+k+')';
+  var eff = Math.min((window.devicePixelRatio||1)*k, 2.4);
+  if(Math.abs(eff - (R.eff||0)) > 0.01){ R.resize(eff); if(st) R.bake(st.L, keyOf()); }
+}
+window.addEventListener('resize', fit);
+
+/* ---------- HUD ---------- */
+function keyOf(){ return li+'_'+seed; }
+function syncHud(){
+  if(memo.lv!==li){ memo.lv=li; document.getElementById('lvName').textContent = G.LEVELS[li].name; }
+  if(memo.score!==st.score){ memo.score=st.score; document.getElementById('score').textContent = st.score; }
+  var dc = st.landed+'/'+st.total;
+  if(memo.dc!==dc){ memo.dc=dc; document.getElementById('dockCnt').textContent = dc; }
+  if(memo.pw!==st.power || memo.mpw!==st.maxPower){
+    memo.pw=st.power; memo.mpw=st.maxPower;
+    document.getElementById('pwBar').firstChild.style.width =
+      Math.max(0, Math.min(100, st.power/st.maxPower*100))+'%';
+    document.getElementById('pwTxt').textContent = st.power+' / '+st.maxPower;
+  }
+}
+function hint(txt, ms){
+  var h = document.getElementById('hint'); h.textContent = txt; h.classList.add('show');
+  clearTimeout(hint._t); hint._t = setTimeout(function(){ h.classList.remove('show'); }, ms||1800);
+}
+
+function show(id){ document.getElementById(id).classList.remove('hide'); }
+function hide(id){ document.getElementById(id).classList.add('hide'); }
+
+function buildGrid(){
+  var gEl = document.getElementById('grid'); gEl.innerHTML='';
+  for(var i=0;i<G.LEVELS.length;i++){
+    (function(i){
+      var b = document.createElement('button');
+      var best = SAVE.best[i];
+      var locked = (i+1) > SAVE.unlocked;
+      b.innerHTML = '<span>'+(i+1)+'</span><i>'+(best?'★'.repeat(best.stars):(locked?'·':''))
+        +'</i><small>'+(best?best.score:'-')+'</small>';
+      b.disabled = locked;
+      b.onclick = function(){ start(i); };
+      gEl.appendChild(b);
+    })(i);
+  }
+  var tot=0,n=0;
+  for(var k in SAVE.best){ tot+=SAVE.best[k].score; n++; }
+  document.getElementById('startBest').textContent = n
+    ? ('已渡 '+n+' / '+G.LEVELS.length+' 关 · 累计 '+tot+' 分') : '尚未启程';
+}
+
+function start(i){
+  li = i; st = G.newState(li, seed);
+  R.resetFog(); R.bake(st.L, keyOf()); R.parts.length=0; R.texts.length=0;
+  memo = {lv:-1,score:-1,dc:'',pw:-1,mpw:-1};
+  hide('ovStart'); hide('ovEnd'); running = true;
+  syncHud();
+  hint('收桨等水阻，慢下来才靠得住', 2600);
+}
+
+var END_TXT = {
+  clear:   {t:'渡完', s:'一江渡尽', l:'不必一直划。江自己会带你到该到的地方。'},
+  exhaust: {t:'力竭', s:'桨力用尽，随波而下', l:'省下的每一桨，都是留给下一渡的。'},
+  down:    {t:'顺流而下', s:'漂出了这一段江', l:'漂过去的不算白漂 —— 你已经认得这段水路。'}
+};
+function finish(){
+  running = false;
+  var r = st.result, e = END_TXT[r.kind]||END_TXT.down;
+  var star = G.stars(li, r);
+  document.getElementById('endTitle').textContent = e.t;
+  document.getElementById('endSub').textContent = e.s;
+  document.getElementById('endStars').textContent =
+    '★★★'.slice(0,star) + '☆☆☆'.slice(0,3-star);
+  var rows = [
+    ['渡口', r.landed+' / '+r.total],
+    ['最缓一靠', Math.round(r.softAvg*100)+'%'],
+    ['剩余桨力', r.power],
+    ['划桨', r.strokes+' 桨'],
+    ['碰撞', r.bumps+' 次']
+  ];
+  if(r.bonus) rows.push(['省桨奖励', '+'+r.bonus]);
+  if(r.pen) rows.push(['碰撞扣分', '−'+r.pen]);
+  rows.push(['本渡得分', r.score]);
+  document.getElementById('endStat').innerHTML =
+    rows.map(function(x){ return '<span>'+x[0]+'</span><b>'+x[1]+'</b>'; }).join('');
+  document.getElementById('endLine').textContent = e.l;
+
+  var b = SAVE.best[li];
+  if(!b || r.score > b.score) SAVE.best[li] = {score:r.score, stars:star};
+  else if(star > (b.stars||0)) SAVE.best[li].stars = star;
+  if(r.landed>=r.total && li+1 < G.LEVELS.length) SAVE.unlocked = Math.max(SAVE.unlocked, li+2);
+  save();
+  document.getElementById('btnNext').style.display =
+    (r.landed>=r.total && li+1<G.LEVELS.length) ? '' : 'none';
+  show('ovEnd');
+}
+
+/* ---------- 输入 ---------- */
+var KMAP = {
+  'ArrowLeft':'L','KeyA':'L','a':'L','A':'L',
+  'ArrowRight':'R','KeyD':'R','d':'R','D':'R',
+  'ArrowUp':'B','KeyW':'B','w':'B','W':'B',
+  'ArrowDown':'V','KeyS':'V','s':'V','S':'V'
+};
+function kcode(e){ return e.code || e.key || ''; }
+window.addEventListener('keydown', function(e){
+  var k = KMAP[kcode(e)] || KMAP[e.key];
+  if(!k) return;
+  e.preventDefault();
+  if(held[k]) return;
+  held[k] = 1; doPaddle(k);
+});
+window.addEventListener('keyup', function(e){
+  var k = KMAP[kcode(e)] || KMAP[e.key];
+  if(k) held[k] = 0;
+});
+window.addEventListener('blur', function(){ held = {}; });
+
+Array.prototype.forEach.call(document.querySelectorAll('#ctl button'), function(b){
+  var k = b.getAttribute('data-k');
+  function on(ev){ ev.preventDefault(); held[k]=1; b.classList.add('on'); doPaddle(k); }
+  function off(){ held[k]=0; b.classList.remove('on'); }
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointercancel', off);
+  b.addEventListener('pointerleave', off);
+});
+cv.addEventListener('pointerdown', function(e){
+  var rect = cv.getBoundingClientRect();
+  var rel = (e.clientX - rect.left)/rect.width;
+  var k = rel < 0.5 ? 'L' : 'R';
+  held[k]=1; doPaddle(k);
+});
+cv.addEventListener('pointerup', function(){ held['L']=0; held['R']=0; });
+cv.addEventListener('pointercancel', function(){ held['L']=0; held['R']=0; });
+
+function doPaddle(k){ if(running && st) G.paddle(st, k); }
+
+document.getElementById('btnRetry').onclick = function(){ start(li); };
+document.getElementById('btnNext').onclick = function(){ start(Math.min(G.LEVELS.length-1, li+1)); };
+document.getElementById('btnMenu').onclick = function(){ running=false; buildGrid(); hide('ovEnd'); show('ovStart'); };
+document.getElementById('snd').onclick = function(){
+  muted = !muted; SAVE.mute = muted; save();
+  if(master) master.gain.value = muted?0:0.5;
+  this.textContent = muted?'🔇':'🔊';
+};
+document.getElementById('snd').textContent = muted?'🔇':'🔊';
+
+/* ---------- 主循环 ---------- */
+function frame(ts){
+  if(!last) last = ts;
+  var dt = (ts - last)/1000; last = ts;
+  if(!(dt>0)) dt = 0;
+  if(dt>0.05) dt = 0.05;
+
+  if(running && st){
+    for(var k in held) if(held[k]) G.paddle(st, k);   // 按住 = 按节奏连划
+    G.update(st, dt);
+    playEvents(st.events);     // ① 音效
+    R.feed(st);                // ② 粒子（会清空 events）
+    R.draw(st, dt);            // ③ 渲染
+    syncHud();
+    if(st.phase === 'end') finish();
+  } else if(st){
+    R.step(dt); R.draw(st, dt);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 启动 ---------- */
+buildGrid();
+var k0 = Math.min(window.innerWidth/STAGE_W, window.innerHeight/STAGE_H);
+if(k0 > 1.16) k0 = 1.16;
+R.resize(Math.min((window.devicePixelRatio||1)*k0, 2.4));
+st = G.newState(0, seed);
+R.bake(st.L, keyOf());
+fit();
+requestAnimationFrame(frame);
+
+window.__game = {
+  get st(){ return st; }, G: G, R: R,
+  start: start, isRunning: function(){ return running; },
+  paddle: function(k){ return G.paddle(st, k); },
+  setLevel: function(i){ li=i; }, getLevel: function(){ return li; }
+};
+})();
+</script>
+</body>
+</html>
