@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#070a12">
+<title>挑灯 · 一条街的光</title>
+<style>
+  :root{ --paper:#f2e6cf; --warm:#ffc46a; --danger:#e0a08c; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05070d;
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif;
+    color:#e9e2d4;-webkit-font-smoothing:antialiased}
+  #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 50% 35%,#0e1524 0%,#05070d 70%)}
+  #stage{position:relative;width:480px;height:900px;transform-origin:50% 50%;
+    box-shadow:0 24px 80px rgba(0,0,0,.6)}
+  #cv{display:block;width:480px;height:900px}
+
+  .hud{position:absolute;inset:0;pointer-events:none;user-select:none}
+  .hud-top{position:absolute;top:0;left:0;right:0;display:flex;gap:2px;padding:8px 10px 0}
+  .stat{flex:1;text-align:center;line-height:1.05;
+    background:linear-gradient(180deg,rgba(8,11,18,.72),rgba(8,11,18,0));
+    padding:5px 2px 9px;border-radius:0 0 8px 8px}
+  .stat b{display:block;font-size:19px;font-weight:700;color:var(--paper);
+    font-variant-numeric:tabular-nums;letter-spacing:.5px}
+  .stat span{display:block;font-size:10px;color:#7d8aa2;margin-top:2px;letter-spacing:2px}
+  .stat.hot b{color:var(--warm)}
+  .stat.low b{color:var(--danger)}
+
+  .lane{position:absolute;left:12px;right:12px;top:64px;display:flex;align-items:center;gap:9px;pointer-events:auto}
+  .lane-tag{font-size:11px;color:#8a95ab;letter-spacing:2px;flex:none}
+  .lane-bar{position:relative;flex:1;height:20px;border-radius:10px;overflow:hidden;
+    background:rgba(10,14,22,.66);border:1px solid rgba(255,196,106,.16)}
+  .lane-fill{position:absolute;left:0;top:0;bottom:0;width:0%;
+    background:linear-gradient(90deg,rgba(255,150,66,.85),rgba(255,208,128,.95));
+    transition:width .18s cubic-bezier(.22,1,.36,1)}
+  .lane-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;color:#f4e7cf;font-variant-numeric:tabular-nums;letter-spacing:.6px;
+    text-shadow:0 1px 2px rgba(0,0,0,.7)}
+  .lane.warn .lane-bar{border-color:rgba(224,160,140,.7)}
+  .lane.warn .lane-fill{background:linear-gradient(90deg,rgba(226,120,84,.9),rgba(240,176,110,.95))}
+  #btnBank{flex:none;pointer-events:auto;cursor:pointer;
+    padding:7px 15px;border-radius:10px;border:1px solid rgba(255,196,106,.5);
+    background:rgba(18,14,16,.82);color:#ffd79a;font-size:13px;font-weight:700;letter-spacing:1px;
+    font-family:inherit;transition:transform .1s,background .15s,opacity .15s}
+  #btnBank:active{transform:scale(.94);background:rgba(60,40,22,.9)}
+  #btnBank:disabled{opacity:.32;cursor:default;border-color:rgba(140,150,170,.3);color:#8b95a8}
+
+  .tip{position:absolute;left:0;right:0;bottom:14px;text-align:center;
+    font-size:12px;color:#93a0b6;letter-spacing:1px;text-shadow:0 1px 4px rgba(0,0,0,.85)}
+  .tip.warn{color:var(--danger)}
+  .tip.hot{color:var(--warm)}
+
+  #btnMute{position:absolute;right:12px;bottom:38px;z-index:5;pointer-events:auto;cursor:pointer;
+    width:34px;height:34px;border-radius:50%;padding:0;line-height:32px;text-align:center;
+    border:1px solid rgba(160,175,200,.28);background:rgba(10,14,22,.62);
+    color:#93a0b6;font-size:15px;font-family:inherit;transition:transform .1s,color .15s}
+  #btnMute:active{transform:scale(.92)}
+  #btnMute.off{color:#5d677a;border-color:rgba(120,132,155,.18)}
+
+  .best{font-size:12px;color:#7f8ca3;letter-spacing:1.5px;margin-top:2px}
+  .best b{color:#e2c79c;font-variant-numeric:tabular-nums;font-weight:600}
+  .best u{text-decoration:none;color:var(--warm)}
+
+  .ov{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;
+    background:radial-gradient(ellipse at 50% 40%,rgba(12,18,30,.86),rgba(4,6,11,.96));
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    pointer-events:auto;padding:26px;text-align:center}
+  .ov.hide{display:none}
+  .ov h1{margin:0;font-size:30px;font-weight:700;letter-spacing:5px;color:#f6ecd8;
+    font-family:"KaiTi","STKaiti","Songti SC",serif}
+  .ov h2{margin:0;font-size:13px;font-weight:400;letter-spacing:3px;color:#8fa0bd}
+  .ov p{margin:0;font-size:13px;line-height:1.95;color:#b9c2d2;max-width:330px;letter-spacing:.4px}
+  .ov p em{font-style:normal;color:var(--warm)}
+  .ov .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px;
+    margin:2px 0 4px;font-size:13px;color:#c3ccdb}
+  .ov .grid div{display:flex;justify-content:space-between;gap:12px;min-width:132px}
+  .ov .grid span{color:#7f8ca3}
+  .ov .grid b{color:#f0e4cd;font-variant-numeric:tabular-nums}
+  .words{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:350px;margin-top:2px}
+  .words i{font-style:normal;font-size:11px;padding:2.5px 7px;border-radius:5px;
+    background:rgba(255,196,106,.09);border:1px solid rgba(255,196,106,.18);color:#e2c79c}
+  .btn{pointer-events:auto;cursor:pointer;margin-top:6px;
+    padding:11px 34px;border-radius:26px;border:1px solid rgba(255,196,106,.55);
+    background:rgba(30,22,16,.86);color:#ffd79a;font-size:15px;font-weight:700;letter-spacing:3px;
+    font-family:inherit;transition:transform .1s,background .15s}
+  .btn:active{transform:scale(.95);background:rgba(66,44,22,.92)}
+  .badge{font-size:12px;letter-spacing:2px;color:#ffd79a;
+    padding:5px 14px;border-radius:14px;background:rgba(255,196,106,.10);
+    border:1px solid rgba(255,196,106,.32)}
+  .keys{font-size:11px;color:#6f7c92;letter-spacing:1px;line-height:1.9}
+  .keys b{color:#93a0b6;font-weight:600}
+  .foot{font-size:12px;color:#6b7789;letter-spacing:2px;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div class="hud">
+      <div class="hud-top">
+        <div class="stat"><b id="vScore">0</b><span>灯火</span></div>
+        <div class="stat" id="mMult"><b id="vMult">×1.0</b><span>倍率</span></div>
+        <div class="stat" id="mShots"><b id="vShots">11</b><span>火种</span></div>
+        <div class="stat"><b id="vLit">0/39</b><span>街灯</span></div>
+      </div>
+
+      <div class="lane" id="lane">
+        <div class="lane-tag">挑子</div>
+        <div class="lane-bar"><div class="lane-fill" id="laneFill"></div>
+          <div class="lane-txt" id="laneTxt">0 / 12</div></div>
+        <button id="btnBank" disabled>收灯</button>
+      </div>
+
+      <div class="tip" id="tip">拖动瞄准 · 松手投出火种</div>
+    </div>
+
+    <div class="ov" id="ovStart">
+      <h2>夜市将散 · 灯还黑着</h2>
+      <h1>挑灯</h1>
+      <p>你有一根挑杆，一枚一枚地往檐下<em>投火种</em>。<br>
+         火顺着绳走，碰上亮的就停下——<em>所以越点越碎</em>。</p>
+      <p style="color:#8fa0bd">挑子只挂得下 <em>12</em> 盏，挂不下的会按原价放到地上。<br>
+         什么时候<em>收灯</em>，是这一夜唯一要算的账。</p>
+      <button class="btn" id="btnStart">开 摊</button>
+      <div class="keys"><b>拖动 / ←→↑↓</b> 瞄准 · <b>空格</b> 投出 · <b>回车 / B</b> 收灯 · <b>R</b> 重开</div>
+      <div class="best" id="vBest"></div>
+    </div>
+
+    <div class="ov hide" id="ovOver">
+      <h2 id="ovTag">收摊了</h2>
+      <h1 id="ovScore">0</h1>
+      <div class="grid" id="ovGrid"></div>
+      <div class="words" id="ovWords"></div>
+      <p class="foot" id="ovLine"></p>
+      <button class="btn" id="btnAgain">再开一摊</button>
+    </div>
+
+    <button id="btnMute" title="静音">♪</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.LanternGame, R = window.LanternRender;
+  var W = G.W, H = G.H;
+
+  var stage = document.getElementById('stage');
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d', { alpha: false });
+
+  /* ---------------- 音（五声音阶） ---------------- */
+  var A = (function () {
+    var c = null, master = null, on = true;
+    var PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26];
+    function ensure() {
+      if (!c) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) { on = false; return null; }
+        c = new AC();
+        master = c.createGain();
+        master.gain.value = 0.20;
+        master.connect(c.destination);
+      }
+      if (c.state === 'suspended') c.resume();
+      return c;
+    }
+    function tone(semi, dur, type, gain, delay) {
+      if (!on) return;
+      var cc = ensure(); if (!cc) return;
+      var t0 = cc.currentTime + (delay || 0);
+      var o = cc.createOscillator(), g = cc.createGain();
+      o.type = type || 'sine';
+      o.frequency.value = 261.63 * Math.pow(2, semi / 12);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(gain || 0.25, t0 + 0.014);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0 + dur + 0.03);
+    }
+    function noise(dur, gain, delay, freq) {
+      if (!on) return;
+      var cc = ensure(); if (!cc) return;
+      var n = Math.floor(cc.sampleRate * dur);
+      var buf = cc.createBuffer(1, n, cc.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.4);
+      var src = cc.createBufferSource(); src.buffer = buf;
+      var f = cc.createBiquadFilter(); f.type = 'bandpass';
+      f.frequency.value = freq || 900; f.Q.value = 1.2;
+      var g = cc.createGain(); g.gain.value = gain || 0.18;
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(cc.currentTime + (delay || 0));
+    }
+    return {
+      unlock: function () { ensure(); },
+      isOn: function () { return on; },
+      setOn: function (v) {
+        on = !!v;
+        if (!on && c) { try { c.suspend(); } catch (e) {} }
+        else if (on && c) { ensure(); }
+      },
+      launch: function () { noise(0.12, 0.10, 0, 1500); tone(19, 0.16, 'triangle', 0.10, 0); },
+      chain: function (n) {
+        var c2 = Math.min(n, 10);
+        for (var i = 0; i < c2; i++) {
+          tone(PENTA[Math.min(PENTA.length - 1, i + 2)], 0.42, 'sine', 0.17, i * 0.055);
+        }
+        if (n >= 8) tone(24, 0.7, 'sine', 0.12, 0.06);
+      },
+      bank: function () {
+        tone(0, 0.5, 'sine', 0.20, 0);
+        tone(7, 0.55, 'sine', 0.16, 0.07);
+        tone(12, 0.7, 'sine', 0.13, 0.15);
+        noise(0.3, 0.06, 0.02, 2600);
+      },
+      tap: function (v) { noise(0.07, 0.10 * (v || 1), 0, 780); },
+      miss: function () {
+        tone(-5, 0.34, 'sine', 0.16, 0);
+        tone(-12, 0.5, 'sine', 0.12, 0.09);
+        noise(0.22, 0.07, 0, 420);
+      },
+      clear: function () {
+        for (var i = 0; i < 8; i++) tone(PENTA[i], 0.9, 'sine', 0.13, i * 0.075);
+        tone(0, 1.6, 'sine', 0.10, 0.62);
+        tone(12, 1.6, 'sine', 0.08, 0.62);
+      },
+      over: function () { tone(-12, 1.1, 'sine', 0.10, 0.1); }
+    };
+  })();
+
+  /* ---------------- 缩放：CSS 尺寸恒定 480x900，整体缩放交给 #stage ---------------- */
+  var eff = 0;
+  function layout() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var k = Math.min(vw / W, vh / H);
+    stage.style.transform = 'scale(' + k + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var e = Math.min(dpr * k, 3);
+    if (Math.abs(e - eff) > 0.02 || cv.width === 0) {
+      eff = e;
+      cv.width = Math.round(W * eff);
+      cv.height = Math.round(H * eff);
+      cv.style.width = W + 'px';
+      cv.style.height = H + 'px';
+    }
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+  }
+  window.addEventListener('resize', layout);
+
+  /* ---------------- 存档（静音 / 最佳灯火） ---------------- */
+  var LS_BEST = 'lanternrow.best', LS_MUTE = 'lanternrow.mute';
+  function lsGet(k, d) {
+    try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }
+    catch (e) { return d; }
+  }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var best = lsGet(LS_BEST, { score: 0, chain: 0, cleared: false }) || { score: 0, chain: 0, cleared: false };
+  if (typeof best.score !== 'number') best = { score: 0, chain: 0, cleared: false };
+
+  function renderBest() {
+    var b = document.getElementById('vBest');
+    if (!best.score && !best.chain) { b.innerHTML = '还没开过摊'; return; }
+    b.innerHTML = '最佳灯火 <b>' + best.score + '</b> · 最长一挂 <b>' + best.chain + '</b> 盏' +
+      (best.cleared ? ' · <u>满街过</u>' : '');
+  }
+
+  /* ---------------- 状态 ---------------- */
+  var st = null, running = false, dragging = false;
+  var last = { score: -1, mult: -1, shots: -1, lit: -1, pending: -1, tip: '' };
+
+  function newGame() {
+    st = G.create({});
+    R.reset(st);
+    last = { score: -1, mult: -1, shots: -1, lit: -1, pending: -1, tip: '' };
+    syncHUD(true);
+  }
+
+  var el = {
+    score: document.getElementById('vScore'),
+    mult: document.getElementById('vMult'),
+    mMult: document.getElementById('mMult'),
+    shots: document.getElementById('vShots'),
+    mShots: document.getElementById('mShots'),
+    lit: document.getElementById('vLit'),
+    lane: document.getElementById('lane'),
+    laneFill: document.getElementById('laneFill'),
+    laneTxt: document.getElementById('laneTxt'),
+    bank: document.getElementById('btnBank'),
+    tip: document.getElementById('tip')
+  };
+
+  function syncHUD(force) {
+    if (!st) return;
+    if (force || st.score !== last.score) { el.score.textContent = st.score; last.score = st.score; }
+    if (force || st.multiplier !== last.mult) {
+      el.mult.textContent = '×' + st.multiplier.toFixed(1);
+      el.mMult.className = 'stat' + (st.multiplier >= 2.5 ? ' hot' : '');
+      last.mult = st.multiplier;
+    }
+    var left = st.shots - st.shotsUsed;
+    if (force || left !== last.shots) {
+      el.shots.textContent = left;
+      el.mShots.className = 'stat' + (left <= 2 ? ' low' : '');
+      last.shots = left;
+    }
+    if (force || st.litCount !== last.lit) {
+      el.lit.textContent = st.litCount + '/' + st.total;
+      last.lit = st.litCount;
+    }
+    if (force || st.pending !== last.pending) {
+      var pct = Math.min(100, st.pending / G.CAP * 100);
+      el.laneFill.style.width = pct + '%';
+      el.laneTxt.textContent = st.pending + ' / ' + G.CAP;
+      el.bank.disabled = st.pending <= 0 || st.phase === 'over';
+      el.lane.className = 'lane' + (st.pending >= G.CAP - 2 ? ' warn' : '');
+      last.pending = st.pending;
+    }
+    var msg, cls = '';
+    if (st.phase === 'over') msg = '';
+    else if (st.phase === 'fly') msg = '火种在飞…';
+    else if (left === 0) msg = '没有火种了';
+    else if (st.pending >= G.CAP - 2) { msg = '挑子快满了 —— 收灯'; cls = 'warn'; }
+    else if (st.pending > 0) {
+      msg = '挑子上挂着 ' + st.pending + ' 盏 ×' + st.multiplier.toFixed(1) +
+        ' —— 收灯得 ' + Math.round(st.pending * st.multiplier * 10);
+      cls = 'hot';
+    } else msg = '拖动瞄准 · 松手投出火种';
+    if (msg !== last.tip) { el.tip.textContent = msg; el.tip.className = 'tip ' + cls; last.tip = msg; }
+  }
+
+  /* ---------------- 输入 ---------------- */
+  function toLogical(ev) {
+    var r = cv.getBoundingClientRect();
+    return {
+      x: (ev.clientX - r.left) / r.width * W,
+      y: (ev.clientY - r.top) / r.height * H
+    };
+  }
+  function onDown(ev) {
+    if (!running || !st || st.phase !== 'aim') return;
+    dragging = true;
+    if (ev.pointerId != null && cv.setPointerCapture) cv.setPointerCapture(ev.pointerId);
+    var p = toLogical(ev);
+    G.aimFromPointer(st, p.x, p.y);
+    ev.preventDefault();
+  }
+  function onMove(ev) {
+    if (!dragging || !st) return;
+    var p = toLogical(ev);
+    G.aimFromPointer(st, p.x, p.y);
+    ev.preventDefault();
+  }
+  function onUp(ev) {
+    if (!dragging) return;
+    dragging = false;
+    if (st && st.phase === 'aim') doLaunch();
+    ev.preventDefault();
+  }
+  cv.addEventListener('pointerdown', onDown);
+  cv.addEventListener('pointermove', onMove);
+  cv.addEventListener('pointerup', onUp);
+  cv.addEventListener('pointercancel', onUp);
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  var keys = {};
+  window.addEventListener('keydown', function (e) {
+    if (!running || !st) return;
+    var k = e.key;
+    if (k === ' ' || k === 'Spacebar') { if (st.phase === 'aim') doLaunch(); e.preventDefault(); return; }
+    if (k === 'Enter' || k === 'b' || k === 'B') { doBank(); e.preventDefault(); return; }
+    if (k === 'r' || k === 'R') { restart(); e.preventDefault(); return; }
+    keys[k] = true;
+    if (/Arrow/.test(k)) e.preventDefault();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.key] = false; });
+
+  function doLaunch() {
+    if (!st || st.phase !== 'aim' || st.shotsUsed >= st.shots) return;
+    G.launch(st);
+    A.unlock();
+  }
+  function doBank() {
+    if (!st || st.pending <= 0 || st.phase === 'over') return;
+    G.bank(st);
+    A.unlock();
+  }
+  el.bank.addEventListener('click', function (e) { e.stopPropagation(); doBank(); });
+
+  /* ---------------- 结算 ---------------- */
+  var ovStart = document.getElementById('ovStart');
+  var ovOver = document.getElementById('ovOver');
+
+  /* ---------------- 静音 ---------------- */
+  var btnMute = document.getElementById('btnMute');
+  function applyMute(v) {
+    A.setOn(!v);
+    btnMute.classList.toggle('off', !!v);
+    btnMute.textContent = v ? '✕' : '♪';
+    lsSet(LS_MUTE, !!v);
+  }
+  btnMute.addEventListener('click', function (e) { e.stopPropagation(); applyMute(!btnMute.classList.contains('off')); });
+  btnMute.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+  applyMute(lsGet(LS_MUTE, false) === true);
+
+  function showOver() {
+    var s = G.stats(st);
+
+    var fresh = false;
+    if (s.score > best.score) { best.score = s.score; fresh = true; }
+    if (s.longest > best.chain) { best.chain = s.longest; fresh = true; }
+    if (s.cleared && !best.cleared) { best.cleared = true; }
+    lsSet(LS_BEST, best);
+    renderBest();
+
+    document.getElementById('ovScore').textContent = s.score;
+    var tagHtml = s.cleared ? '<span class="badge">满街灯火 · 灯火 ×1.5</span>' : '收摊了';
+    if (fresh) tagHtml += ' <span class="badge" style="border-color:rgba(255,140,105,.5);color:#ffb694">新纪录</span>';
+    document.getElementById('ovTag').innerHTML = tagHtml;
+    var rows = [
+      ['点亮街灯', s.lit + ' / ' + s.total],
+      ['最长一挂', s.longest + ' 盏'],
+      ['收灯次数', s.bankCount + ' 次'],
+      ['空放', s.missCount + ' 次'],
+      ['没收的', s.lost > 0 ? s.lost + ' 盏' : '—'],
+      ['最佳灯火', best.score + (best.cleared ? ' · 满街过' : '')]
+    ];
+    document.getElementById('ovGrid').innerHTML = rows.map(function (r) {
+      return '<div><span>' + r[0] + '</span><b>' + r[1] + '</b></div>';
+    }).join('');
+    document.getElementById('ovWords').innerHTML = s.words.map(function (w) {
+      return '<i>' + w + '</i>';
+    }).join('');
+    document.getElementById('ovLine').textContent = s.cleared
+      ? '整条街都亮了。你挑着空挑子往回走。'
+      : '你点的灯，照的是别人的路。';
+    ovOver.classList.remove('hide');
+  }
+
+  function restart() {
+    ovOver.classList.add('hide');
+    newGame();
+    running = true;
+  }
+  document.getElementById('btnAgain').addEventListener('click', restart);
+  document.getElementById('btnStart').addEventListener('click', function () {
+    A.unlock();
+    ovStart.classList.add('hide');
+    newGame();
+    running = true;
+  });
+
+  /* ---------------- 主循环 ---------------- */
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!st) return;
+    var dt = Math.min(0.05, (now - (frame.last || now)) / 1000);
+    frame.last = now;
+
+    if (running && st.phase !== 'over') {
+      var fine = keys['Shift'] ? 0.35 : 1;
+      if (keys['ArrowLeft'] || keys['a'] || keys['A']) st.aim.angle = Math.max(-78, st.aim.angle - 62 * dt * fine);
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) st.aim.angle = Math.min(78, st.aim.angle + 62 * dt * fine);
+      if (keys['ArrowUp'] || keys['w'] || keys['W']) st.aim.power = Math.min(1, st.aim.power + 0.75 * dt * fine);
+      if (keys['ArrowDown'] || keys['s'] || keys['S']) st.aim.power = Math.max(0.2, st.aim.power - 0.75 * dt * fine);
+      G.update(st, dt);
+      if (st.phase === 'over') { running = false; showOver(); }
+    } else if (st.phase === 'over') {
+      G.update(st, dt);
+    }
+
+    if (st.phase === 'aim' && st.shotsUsed < st.shots) {
+      st.__pts = G.predict(st, st.aim.angle, st.aim.power);
+    } else {
+      st.__pts = null;
+    }
+
+    R.draw(ctx, st, dt, A);
+    syncHUD(false);
+  }
+
+  layout();
+  renderBest();
+  newGame();
+  running = false;
+  requestAnimationFrame(frame);
+
+  window.__game = function () { return st; };
+  window.__api = {
+    G: G, R: R,
+    start: function () { document.getElementById('btnStart').click(); },
+    bank: doBank, launch: doLaunch, restart: restart
+  };
+})();
+</script>
+</body>
+</html>
