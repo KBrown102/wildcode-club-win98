@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0A0B12">
+<title>回声 · 一室钟</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #07080D;
+    font-family: "KaiTi","STKaiti","PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif;
+    color: #C9CFD6;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 480px; height: 900px;
+    transform-origin: 50% 50%;
+    transform: translate(-50%,-50%);
+    background: #0A0B12;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 70px rgba(0,0,0,0.7);
+  }
+  #cv { display: block; width: 480px; height: 900px; position: absolute; left: 0; top: 0; }
+
+  /* ---------- 顶部信息 ---------- */
+  #hud {
+    position: absolute; left: 0; top: 0; width: 480px; height: 150px;
+    pointer-events: none; z-index: 3;
+    padding: 14px 20px 0;
+  }
+  .hrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .hbrand { font-size: 26px; font-weight: 700; letter-spacing: 4px; color: #E8DCC4; }
+  .hbrand small { font-size: 13px; letter-spacing: 2px; color: #6E7A88; margin-left: 8px; font-weight: 400; }
+  .hlv { font-size: 13px; color: #6E7A88; letter-spacing: 2px; }
+  .chips { display: flex; gap: 8px; margin-top: 16px; }
+  .chip {
+    flex: 1; background: rgba(232,180,74,0.05);
+    border: 1px solid rgba(232,180,74,0.13);
+    border-radius: 10px; padding: 6px 0 5px; text-align: center;
+  }
+  .chip .k { font-size: 10px; color: #6E7A88; letter-spacing: 2px; display: block; }
+  .chip .v { font-size: 18px; font-weight: 700; color: #E8DCC4; letter-spacing: 0.5px; }
+  .chip.ring .v { color: #F2C46B; }
+  .chip.shot .v { color: #E8B44A; }
+  .chip.pow .v { color: #7FA86B; }
+  .chip.combo .v { color: #C85A4A; }
+  #tot { margin-top: 10px; font-size: 11.5px; color: #55606D; letter-spacing: 2px; text-align: right; }
+
+  /* ---------- 底部条 ---------- */
+  #bar {
+    position: absolute; left: 0; bottom: 0; width: 480px; height: 88px;
+    z-index: 30; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; pointer-events: none;
+  }
+  #bar button { pointer-events: auto; }
+  #hint { font-size: 12px; color: #6E7A88; letter-spacing: 0.8px; line-height: 1.65; max-width: 288px; }
+  #hint b { color: #93A6B8; font-weight: 600; }
+  .keys { margin-top: 16px; font-size: 12px; color: #5F6B79; letter-spacing: 1.1px; line-height: 1.9; }
+  .keys b { color: #8FA3B6; font-weight: 600; }
+  .bbtn {
+    font-family: inherit; font-size: 13px; color: #9AA6B2;
+    background: rgba(232,180,74,0.07); border: 1px solid rgba(232,180,74,0.16);
+    border-radius: 9px; padding: 7px 13px; margin-left: 8px; cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .bbtn:active { background: rgba(232,180,74,0.18); transform: translateY(1px); }
+
+  /* ---------- 遮罩 ---------- */
+  .ov {
+    position: absolute; left: 0; top: 0; width: 480px; height: 900px;
+    z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(8,9,16,0.93);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    padding: 0 44px; text-align: center;
+  }
+  .ov.hide { display: none; }
+  .ov h1 { font-size: 42px; letter-spacing: 10px; margin: 0 0 6px; color: #F2C46B; font-weight: 700;
+           text-shadow: 0 0 34px rgba(242,196,107,0.30); }
+  .ov h2 { font-size: 15px; letter-spacing: 5px; margin: 0 0 28px; color: #6E7A88; font-weight: 400; }
+  .ov p { font-size: 14.5px; line-height: 2.15; color: #98A3AE; margin: 0 0 8px; letter-spacing: 0.8px; }
+  .ov p .em { color: #E8B44A; }
+  .ov p .gl { color: #F2C46B; }
+  .ov p .dim { color: #6E7A88; }
+  .big {
+    font-family: inherit; font-size: 19px; letter-spacing: 6px; color: #17130B;
+    background: #E8B44A; border: none; border-radius: 11px;
+    padding: 14px 46px; margin-top: 26px; cursor: pointer;
+    box-shadow: 0 8px 28px rgba(232,180,74,0.26);
+  }
+  .big:active { transform: translateY(1px); }
+  .ghost {
+    font-family: inherit; font-size: 14px; letter-spacing: 3px; color: #7C8894;
+    background: transparent; border: 1px solid rgba(232,180,74,0.18); border-radius: 10px;
+    padding: 10px 26px; margin-top: 12px; cursor: pointer;
+  }
+  .tbl { width: 306px; margin: 4px 0 6px; }
+  .tbl .tr { display: flex; justify-content: space-between; padding: 6px 2px;
+             border-bottom: 1px dashed rgba(232,180,74,0.13); font-size: 14px; }
+  .tbl .tr:last-child { border-bottom: none; }
+  .tbl .tr .k { color: #6E7A88; letter-spacing: 2px; }
+  .tbl .tr .v { color: #E8DCC4; font-weight: 700; }
+  .tbl .tr .v.m { color: #F2C46B; }
+  .tbl .tr .v.f { color: #C85A4A; }
+  .line { font-size: 14px; color: #7C8894; letter-spacing: 1.6px; margin-top: 18px; font-style: italic; }
+  .best { font-size: 12px; color: #55606D; letter-spacing: 2px; margin-top: 14px; }
+  .stars { font-size: 26px; letter-spacing: 8px; color: #F2C46B; margin-bottom: 4px; height: 32px; }
+  .stars .off { color: #2B3038; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv" width="480" height="900"></canvas>
+
+  <div id="hud">
+    <div class="hrow">
+      <div class="hbrand">回声<small>一室钟</small></div>
+      <div class="hlv">第 <span id="lv">1</span> 室</div>
+    </div>
+    <div class="chips">
+      <div class="chip ring"><span class="k">醒钟</span><span class="v" id="vRing">0/5</span></div>
+      <div class="chip shot"><span class="k">余光</span><span class="v" id="vShot">5</span></div>
+      <div class="chip pow"><span class="k">光能</span><span class="v" id="vPow">7</span></div>
+      <div class="chip combo"><span class="k">连击</span><span class="v" id="vCombo">×0</span></div>
+    </div>
+    <div id="tot">本室 <span id="vScore">0</span> 分　·　累计 <span id="vTotal">0</span></div>
+  </div>
+
+  <!-- 开场 -->
+  <div class="ov" id="ovStart">
+    <h1>回声</h1>
+    <h2>一 室 钟</h2>
+    <p>一室漆黑。你站在灯台前，手里只有几束光。<br>
+       <span class="em">按住并拖动</span>瞄准，松手放出光弹。<br>
+       光会撞墙反弹，每弹一次<span class="dim">耗一分光能</span>。<br>
+       它飞过的地方留下<span class="em">光痕</span>，照亮藏着的<span class="gl">编钟</span>与石柱 ——<br>
+       <span class="dim">打空也不白费，你只是把屋子看清了一点。</span><br>
+       击中编钟，它奏一个音；一发之内连中，<span class="gl">第二口 ×2、第三口 ×3</span>。</p>
+    <div class="keys">键盘　<b>A D</b> / <b>← →</b> 微调　·　<b>W S</b> / <b>↑ ↓</b> 粗调　·　<b>空格</b> 放光　·　<b>M</b> 静音　·　<b>R</b> 重来</div>
+    <button class="big" id="btnStart">放　光</button>
+    <div class="best" id="bestStart"></div>
+  </div>
+
+  <!-- 结算 -->
+  <div class="ov hide" id="ovEnd">
+    <div class="stars" id="eStars"></div>
+    <h2 style="font-size:19px;letter-spacing:6px;margin:0 0 20px" id="eTitle">灯 收 了</h2>
+    <div class="tbl">
+      <div class="tr"><span class="k">唤醒</span><span class="v m" id="eRing">0 / 5</span></div>
+      <div class="tr"><span class="k">最长一发连击</span><span class="v f" id="eCombo">×1</span></div>
+      <div class="tr"><span class="k">余光</span><span class="v" id="eShot">0 发</span></div>
+      <div class="tr"><span class="k">余光奖励</span><span class="v m" id="eBonus">+0</span></div>
+      <div class="tr"><span class="k">本室得分</span><span class="v" id="eScore">0</span></div>
+      <div class="tr"><span class="k">累计</span><span class="v" id="eTotal">0</span></div>
+    </div>
+    <div class="line" id="eLine"></div>
+    <button class="big" id="btnNext">再 入 一 室</button>
+    <button class="ghost" id="btnAgain">重来本室</button>
+    <div class="best" id="bestEnd"></div>
+  </div>
+
+  <!-- 常驻按钮（放在遮罩之后，避免被挡住点不到） -->
+  <div id="bar">
+    <div id="hint">拖动瞄准 · 松手放光　|　<b>A D</b>/<b>← →</b> 微调　<b>W S</b>/<b>↑ ↓</b> 粗调</div>
+    <div>
+      <button class="bbtn" id="btnMute">♪ 开</button>
+      <button class="bbtn" id="btnRetry">重来</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.Echo, R = window.EchoRender;
+  var W = G.W, H = G.H;
+
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    lv: $('lv'), ring: $('vRing'), shot: $('vShot'), pow: $('vPow'),
+    combo: $('vCombo'), score: $('vScore'), total: $('vTotal'),
+    ovStart: $('ovStart'), ovEnd: $('ovEnd'),
+    eStars: $('eStars'), eTitle: $('eTitle'), eRing: $('eRing'), eCombo: $('eCombo'),
+    eShot: $('eShot'), eBonus: $('eBonus'), eScore: $('eScore'), eTotal: $('eTotal'),
+    eLine: $('eLine'), bestStart: $('bestStart'), bestEnd: $('bestEnd')
+  };
+
+  // ---------- 自适应：canvas CSS 固定逻辑尺寸，只缩放 #stage ----------
+  var K = 1;
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    K = Math.min(vw / W, vh / H);
+    if (!isFinite(K) || K <= 0) K = 1;
+    stage.style.transform = 'translate(-50%,-50%) scale(' + K + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var eff = Math.min(dpr * K, 2.4);
+    if (eff < 1) eff = 1;
+    var bw = Math.round(W * eff), bh = Math.round(H * eff);
+    if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    if (window.EchoRender) window.EchoRender.setDPR(eff);   // 精灵随 dpr 重建，保持清晰
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
+  // ---------- 音 ----------
+  var AC = null, MASTER = null, muted = false;
+  try { muted = localStorage.getItem('echobell_mute') === '1'; } catch (e) { }
+  function ac() {
+    if (AC) return AC;
+    try {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      AC = new Ctor();
+      MASTER = AC.createGain();
+      MASTER.gain.value = muted ? 0 : 0.5;
+      MASTER.connect(AC.destination);
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  function resume() { var a = ac(); if (a && a.state === 'suspended') a.resume(); }
+  function tone(freq, dur, type, vol, delay, glide) {
+    var a = ac(); if (!a || muted) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * glide), t0 + dur);
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(gn); gn.connect(MASTER);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  // 编钟：基音 + 八度 + 五度泛音，长衰减
+  function chime(freq, combo) {
+    tone(freq, 1.45, 'sine', 0.30, 0);
+    tone(freq * 2, 0.85, 'sine', 0.11, 0.015);
+    tone(freq * 3, 0.50, 'sine', 0.052, 0.03);
+    tone(freq * 1.5, 0.95, 'triangle', 0.042, 0.02);
+    if (combo >= 2) tone(freq * 4, 0.36, 'sine', 0.045, 0.06);
+  }
+  // 噪声瞬态通道：撞击的「质感」全靠它（纯振荡器做不出石屑与金属槌击）
+  var NB = null;
+  function noiseBuf() {
+    var a = ac(); if (!a) return null;
+    if (NB) return NB;
+    var n = Math.floor(a.sampleRate * 0.5);
+    NB = a.createBuffer(1, n, a.sampleRate);
+    var ch = NB.getChannelData(0);
+    for (var i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+    return NB;
+  }
+  function noise(dur, vol, freq, delay, q) {
+    var a = ac(); if (!a || muted) return;
+    var b = noiseBuf(); if (!b) return;
+    var t0 = a.currentTime + (delay || 0);
+    var s = a.createBufferSource(); s.buffer = b;
+    var f = a.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = freq || 1200; f.Q.value = q || 1.2;
+    var gn = a.createGain();
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    s.connect(f); f.connect(gn); gn.connect(MASTER);
+    s.start(t0); s.stop(t0 + dur + 0.03);
+  }
+
+  var lastWall = -9, lastPil = -9, lastTick = -9, T = 0;
+  // 撞墙：闷、低、带石屑 —— 一整面石壁吃掉了光
+  function sfxWall() {
+    if (T - lastWall < 0.03) return; lastWall = T;
+    tone(152, 0.15, 'sine', 0.085, 0, 0.40);
+    tone(232, 0.07, 'triangle', 0.032, 0, 0.58);
+    noise(0.05, 0.040, 720, 0, 0.9);
+  }
+  // 撞柱：比墙硬、更紧；回音柱额外补一记上滑的亮音
+  function sfxPillar(echo) {
+    if (T - lastPil < 0.03) return; lastPil = T;
+    tone(322, 0.10, 'triangle', 0.062, 0, 0.48);
+    noise(0.055, 0.048, 1620, 0, 1.6);
+    if (echo) {
+      tone(1180, 0.16, 'triangle', 0.085, 0.005, 1.5);
+      tone(1760, 0.12, 'sine', 0.05, 0.015);
+    }
+  }
+  // 撞钟：槌头磕上青铜的那一瞬（金属瞬态），后面才交给 chime 的余韵
+  function sfxStrike(freq) {
+    noise(0.034, 0.072, 3400, 0, 2.2);
+    tone(freq * 3.2, 0.055, 'square', 0.026, 0, 0.55);
+    tone(2050, 0.028, 'triangle', 0.030, 0.004, 0.7);
+  }
+  // 转向：棘轮咔哒，两声错开一点点才像齿轮咬合
+  function sfxTick() {
+    if (T - lastTick < 0.026) return; lastTick = T;
+    noise(0.020, 0.052, 2700, 0, 3.0);
+    tone(1460, 0.026, 'square', 0.020, 0, 0.72);
+    noise(0.016, 0.030, 1900, 0.014, 3.4);
+  }
+  // 瞄准角每转过 TICK_STEP 就咔哒一下
+  var TICK_STEP = 2.4 * Math.PI / 180, tickAcc = 0;
+  function aimTick(delta) {
+    tickAcc += Math.abs(delta);
+    if (tickAcc >= TICK_STEP) { tickAcc = 0; sfxTick(); }
+  }
+  function sfxFire() { tone(660, 0.14, 'triangle', 0.075, 0, 1.9); noise(0.06, 0.03, 1100, 0, 1.0); }
+  function sfxDie() { tone(300, 0.5, 'sine', 0.055, 0, 0.42); }
+  function sfxClear() {
+    var seq = [0, 1, 2, 3, 4];
+    for (var i = 0; i < seq.length; i++) tone(G.PENTA[seq[i]], 1.7, 'sine', 0.17, i * 0.13);
+    tone(G.PENTA[4] * 2, 2.2, 'sine', 0.09, 0.66);
+  }
+  function sfxOver() {
+    var seq = [4, 2, 1, 0];
+    for (var i = 0; i < seq.length; i++) tone(G.PENTA[seq[i]], 1.1, 'sine', 0.13, i * 0.15);
+  }
+
+  // ---------- 最佳记录 ----------
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('echobell_best_v1') || '0', 10) || 0; } catch (e) { }
+  function saveBest(v) {
+    if (v > best) { best = v; try { localStorage.setItem('echobell_best_v1', String(v)); } catch (e) { } }
+  }
+  function bestTxt() { return best > 0 ? '历来最高单室 · ' + best + ' 分' : ''; }
+
+  // ---------- 局面 ----------
+  var level = 1, st = null, mode = 'ready', total = 0;
+
+  var LINES = [
+    '灯收了。屋里还剩一点余响。',
+    '没醒的那些，下次再来。',
+    '光走过的路，回声响过了。',
+    '一室之中，你叫醒了几口。',
+    '暗的不是屋子，是还没被照到的地方。',
+    '剩下的光，留着明天。'
+  ];
+
+  function newGame(lv, keepTotal) {
+    level = Math.max(1, lv);
+    if (!keepTotal) total = 0;
+    st = G.create(level, ((Date.now() >>> 0) ^ (level * 2654435761) ^ (Math.random() * 0xffffffff >>> 0)) >>> 0);
+    R.reset(st);
+    mode = 'playing';
+    el.ovStart.classList.add('hide');
+    el.ovEnd.classList.add('hide');
+    el.lv.textContent = level;
+    syncHUD();
+    resume();
+  }
+
+  function syncHUD() {
+    if (!st) return;
+    var s = G.stats(st);
+    el.ring.textContent = s.rung + '/' + s.total;
+    el.shot.textContent = s.shots;
+    el.pow.textContent = s.energy;
+    el.combo.textContent = '×' + s.combo;
+    el.score.textContent = s.score;
+    el.total.textContent = total + s.score;
+  }
+
+  function finish() {
+    var s = G.stats(st), r = s.result;
+    mode = 'over';
+    total += r.score;
+    var stars = '';
+    for (var i = 0; i < 3; i++) stars += (i < r.stars ? '★' : '<span class="off">★</span>');
+    el.eStars.innerHTML = stars;
+    el.eTitle.textContent = r.clear ? '一 室 皆 响' : '灯 收 了';
+    el.eRing.textContent = r.rung + ' / ' + r.total;
+    el.eCombo.textContent = '×' + Math.max(1, r.bestCombo);
+    el.eShot.textContent = r.shotsLeft + ' 发';
+    el.eBonus.textContent = '+' + r.bonus + (r.clear ? '（满堂 +300）' : '');
+    el.eScore.textContent = r.score;
+    el.eTotal.textContent = total;
+    el.eLine.textContent = LINES[Math.floor(Math.random() * LINES.length)];
+    saveBest(r.score);
+    el.bestEnd.textContent = bestTxt();
+    el.bestStart.textContent = bestTxt();
+    el.ovEnd.classList.remove('hide');
+    if (r.clear) sfxClear(); else sfxOver();
+  }
+
+  // ---------- 输入 ----------
+  function pos(e) {
+    var b = cv.getBoundingClientRect();
+    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return {
+      x: (t.clientX - b.left) / (b.width / W),
+      y: (t.clientY - b.top) / (b.height / H)
+    };
+  }
+  var dragging = false;
+  function down(e) {
+    if (mode !== 'playing' || !st || st.phase !== 'aim') return;
+    dragging = true;
+    R.setAiming(true);
+    var p = pos(e);
+    G.aimAt(st, p.x, p.y);
+    e.preventDefault();
+  }
+  function move(e) {
+    if (!dragging || mode !== 'playing' || !st || st.phase !== 'aim') return;
+    var p = pos(e), prev = st.aim;
+    G.aimAt(st, p.x, p.y);
+    aimTick(st.aim - prev);   // 拖动也走同一套棘轮声
+    e.preventDefault();
+  }
+  function up(e) {
+    if (!dragging) return;
+    dragging = false;
+    R.setAiming(false);
+    if (mode !== 'playing' || !st || st.phase !== 'aim') return;
+    if (e && e.clientX !== undefined) {
+      var p = pos(e);
+      G.aimAt(st, p.x, p.y);
+    }
+    if (G.fire(st)) { sfxFire(); syncHUD(); }
+  }
+
+  if (window.PointerEvent) {
+    cv.addEventListener('pointerdown', down, { passive: false });
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', function () { dragging = false; R.setAiming(false); });
+  } else {
+    cv.addEventListener('mousedown', down);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    cv.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
+  }
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // 键盘 —— 纪律：WASD 与方向键完全等同（A=← D=→ W=↑ S=↓），两边一致不做二套
+  var DEG = Math.PI / 180;
+  function keyOf(e) {
+    var c = e.code || '', k = e.key || '';
+    var kl = k.length === 1 ? k.toLowerCase() : k.toLowerCase();
+    return {
+      left: c === 'ArrowLeft' || c === 'KeyA' || kl === 'arrowleft' || kl === 'a',
+      right: c === 'ArrowRight' || c === 'KeyD' || kl === 'arrowright' || kl === 'd',
+      up: c === 'ArrowUp' || c === 'KeyW' || kl === 'arrowup' || kl === 'w',
+      down: c === 'ArrowDown' || c === 'KeyS' || kl === 'arrowdown' || kl === 's',
+      fire: k === ' ' || c === 'Space' || k === 'Enter' || c === 'Enter' || c === 'NumpadEnter'
+    };
+  }
+  window.addEventListener('keydown', function (e) {
+    var kk = keyOf(e), k = e.key;
+    if (kk.left || kk.right || kk.up || kk.down || k === ' ' || k === 'Enter') e.preventDefault();
+    if (mode === 'ready') { if (kk.fire) { resume(); newGame(1); } return; }
+    if (mode === 'over') {
+      if (kk.fire) { resume(); newGame(level + 1, true); }
+      else if (k === 'r' || k === 'R') { resume(); total -= (st && st.result ? st.result.score : 0); newGame(level, true); }
+      else if (k === 'm' || k === 'M') toggleMute();
+      return;
+    }
+    if (st && st.phase === 'aim') {
+      var d = 0;
+      if (kk.left) d = -1.1 * DEG;
+      else if (kk.right) d = 1.1 * DEG;
+      else if (kk.up) d = -3.6 * DEG;      // 粗调：与 A/D 同向，只是步子大
+      else if (kk.down) d = 3.6 * DEG;
+      if (d) { G.adjustAim(st, d); aimTick(d); R.setAiming(true); }
+      else if (kk.fire) { if (G.fire(st)) { sfxFire(); R.setAiming(false); syncHUD(); } }
+    }
+    if (k === 'r' || k === 'R') { total -= (st && st.result ? st.result.score : 0); newGame(level, true); }
+    else if (k === 'm' || k === 'M') toggleMute();
+  });
+  window.addEventListener('keyup', function (e) {
+    var kk = keyOf(e);
+    if (kk.left || kk.right || kk.up || kk.down) R.setAiming(false);
+  });
+
+  // ---------- 按钮 ----------
+  $('btnStart').addEventListener('click', function () { resume(); newGame(1, false); });
+  $('btnNext').addEventListener('click', function () { resume(); newGame(level + 1, true); });
+  $('btnAgain').addEventListener('click', function () {
+    resume();
+    total -= (st && st.result ? st.result.score : 0);
+    newGame(level, true);
+  });
+  $('btnRetry').addEventListener('click', function () {
+    resume();
+    total -= (st && st.result ? st.result.score : 0);
+    newGame(level, true);
+  });
+  function toggleMute() {
+    muted = !muted;
+    if (MASTER) MASTER.gain.value = muted ? 0 : 0.5;
+    $('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+    try { localStorage.setItem('echobell_mute', muted ? '1' : '0'); } catch (e) { }
+  }
+  $('btnMute').addEventListener('click', toggleMute);
+  $('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+
+  // ---------- 主循环 ----------
+  var last = 0, hudT = 0, fpsAcc = 0, fpsN = 0, fps = 60;
+  function frame(ts) {
+    var dt = last ? (ts - last) / 1000 : 0.016;
+    last = ts;
+    if (dt > 0.06) dt = 0.06;
+    T += dt;
+
+    if (st && mode === 'playing') {
+      // 先 update 产生事件 → 再取事件播音效 → 最后才交给渲染（渲染会清空事件流）
+      G.update(st, dt);
+      for (var i = 0; i < st.events.length; i++) {
+        var e = st.events[i];
+        if (e.type === 'ring') { sfxStrike(e.freq); chime(e.freq, e.combo); }
+        else if (e.type === 'bounce') { if (e.kind === 'pillar') sfxPillar(e.echo); else sfxWall(); }
+        else if (e.type === 'die') sfxDie();
+      }
+      hudT += dt;
+      if (hudT > 0.07) { hudT = 0; syncHUD(); }
+      if (st.phase === 'over') { syncHUD(); finish(); }
+    }
+
+    if (st) R.draw(ctx, st, dt);
+
+    if (dt > 0) { fpsAcc += 1 / dt; fpsN++; if (fpsN >= 30) { fps = fpsAcc / fpsN; fpsAcc = 0; fpsN = 0; } }
+    requestAnimationFrame(frame);
+  }
+
+  fit();
+  st = G.create(1, (Date.now() ^ 0x9e3779b9) >>> 0);
+  R.reset(st);
+  mode = 'ready';
+  syncHUD();
+  el.bestStart.textContent = bestTxt();
+  requestAnimationFrame(frame);
+
+  // 探针
+  window.__game = {
+    G: G, R: R,
+    get st() { return st; },
+    get mode() { return mode; },
+    get total() { return total; },
+    get fps() { return fps; },
+    newGame: newGame,
+    fire: function () { return G.fire(st); },
+    aim: function (x, y) { return G.aimAt(st, x, y); },
+    K: function () { return K; }
+  };
+})();
+</script>
+</body>
+</html>
