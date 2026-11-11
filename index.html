@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wildcode.club · 野码实验场</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23FF6A3D'/%3E%3Cpath d='M6 9h5v10h4V9h5v14h-5v-3h-4v3H6z' fill='%23000'/%3E%3C/svg%3E">
+<style>
+/* ============ 基础 ============ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --desktop: #008080;
+  --face: #C0C0C0;
+  --light: #DFDFDF;
+  --white: #FFFFFF;
+  --shadow: #808080;
+  --dark: #000000;
+  --title: #000080;
+  --title-idle: #808080;
+  --brand: #FF6A3D;
+  --brand-dark: #C43D15;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  font-family: "SimSun", "宋体", "MS Sans Serif", sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  color: #000;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ============ 显示器外框 ============ */
+#viewport {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+#screen {
+  width: 1024px; height: 768px;
+  position: relative;
+  overflow: hidden;
+  background: var(--desktop);
+  zoom: var(--s, 1);
+  box-shadow: 0 0 0 1px #2a2a2a, 0 0 40px rgba(0,0,0,.6);
+}
+
+/* ============ 桌面图标 ============ */
+#icons { position: absolute; inset: 0 0 28px 0; z-index: 1; }
+
+.icon {
+  position: absolute;
+  width: 88px;
+  text-align: center;
+  cursor: default;
+  padding: 2px 0 3px;
+}
+.icon .ic {
+  width: 48px; height: 48px;
+  margin: 0 auto;
+  display: block;
+  shape-rendering: crispEdges;
+}
+.icon span {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  line-height: 14px;
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,.9);
+  padding: 0 2px;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+.icon.sel span { background: var(--title); color: #fff; text-shadow: none; }
+.icon.sel .ic { filter: drop-shadow(0 0 0 #000) brightness(.85); }
+
+/* ============ 任务栏 ============ */
+#taskbar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 28px;
+  background: var(--face);
+  border-top: 1px solid var(--white);
+  box-shadow: inset 0 1px 0 var(--light), inset 0 2px 0 var(--shadow);
+  display: flex; align-items: center;
+  padding: 2px;
+  gap: 2px;
+  z-index: 300;
+}
+
+#startbtn {
+  width: 54px; height: 22px;
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 3px;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow);
+  font-family: inherit; font-size: 12px; font-weight: bold;
+  cursor: default;
+  flex: 0 0 auto;
+}
+#startbtn:active, #startbtn.open {
+  border-color: var(--dark) var(--white) var(--white) var(--dark);
+  box-shadow: inset 1px 1px 0 var(--shadow), inset -1px -1px 0 var(--light);
+  padding-top: 1px;
+}
+#startbtn svg { width: 16px; height: 16px; display: block; }
+
+#tasklist {
+  flex: 1;
+  display: flex; gap: 2px; align-items: center;
+  overflow: hidden;
+  height: 22px;
+}
+.taskbtn {
+  height: 22px;
+  max-width: 160px;
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex; align-items: center; gap: 3px;
+  padding: 0 4px;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow);
+  font-family: inherit; font-size: 12px;
+  cursor: default;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.taskbtn span { overflow: hidden; text-overflow: ellipsis; }
+.taskbtn.active {
+  border-color: var(--dark) var(--white) var(--white) var(--dark);
+  box-shadow: inset 1px 1px 0 var(--shadow), inset -1px -1px 0 var(--light);
+  font-weight: bold;
+}
+.taskbtn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+#tray {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 4px;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid;
+  border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  box-shadow: inset 1px 1px 0 var(--light);
+  font-size: 12px;
+}
+#clock { min-width: 36px; text-align: center; }
+
+/* ============ 窗口 ============ */
+#windows { position: absolute; inset: 0 0 28px 0; z-index: 10; pointer-events: none; }
+#windows > * { pointer-events: auto; }
+
+.win {
+  position: absolute;
+  display: flex; flex-direction: column;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow), 2px 2px 0 rgba(0,0,0,.25);
+}
+.win.active { box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow), 2px 2px 0 rgba(0,0,0,.35); }
+
+.titlebar {
+  height: 18px;
+  flex: 0 0 18px;
+  display: flex; align-items: center;
+  gap: 3px;
+  padding: 0 2px 0 3px;
+  background: var(--title);
+  color: #fff;
+  font-weight: bold;
+  cursor: move;
+}
+.win:not(.active) .titlebar { background: var(--title-idle); }
+.titlebar svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.titlebar .tt {
+  flex: 1; min-width: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.tbtns { display: flex; gap: 1px; flex: 0 0 auto; }
+.tb {
+  width: 16px; height: 14px;
+  display: grid; place-items: center;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light);
+  font-family: inherit; font-size: 9px; font-weight: bold;
+  line-height: 1;
+  color: #000;
+  cursor: default;
+  padding: 0;
+}
+.tb:active { border-color: var(--dark) var(--white) var(--white) var(--dark); box-shadow: inset 1px 1px 0 var(--shadow); }
+.tb.close { margin-left: 1px; }
+
+.wbody { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.wbody iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+
+/* 状态栏 */
+.statusbar {
+  flex: 0 0 20px;
+  height: 20px;
+  border-top: 1px solid var(--white);
+  box-shadow: inset 0 1px 0 var(--shadow);
+  display: flex; align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #333;
+}
+.statusbar .seg {
+  border: 1px solid;
+  border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  padding: 0 5px;
+  height: 16px;
+  line-height: 14px;
+}
+
+/* ============ 右键菜单 ============ */
+#ctxmenu {
+  position: absolute;
+  z-index: 400;
+  display: none;
+  min-width: 132px;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow), 2px 2px 0 rgba(0,0,0,.35);
+  padding: 2px;
+  font-size: 12px;
+}
+#ctxmenu .ci {
+  padding: 3px 20px 3px 22px;
+  cursor: default;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+#ctxmenu .ci:hover { background: var(--title); color: #fff; }
+#ctxmenu .ci.dis { color: var(--shadow); }
+#ctxmenu .ci.dis:hover { background: transparent; color: var(--shadow); }
+#ctxmenu .sep {
+  height: 0;
+  border-top: 1px solid var(--shadow);
+  border-bottom: 1px solid var(--white);
+  margin: 3px 1px;
+}
+
+/* ============ 开始菜单 ============ */
+#startmenu {
+  position: absolute;
+  left: 2px; bottom: 28px;
+  width: 196px;
+  background: var(--face);
+  border: 1px solid;
+  border-color: var(--white) var(--dark) var(--dark) var(--white);
+  box-shadow: inset 1px 1px 0 var(--light), inset -1px -1px 0 var(--shadow), 2px 2px 0 rgba(0,0,0,.3);
+  display: none;
+  z-index: 200;
+  padding: 2px;
+  flex-direction: row;
+}
+#startmenu.open { display: flex; }
+
+.sm-brand {
+  width: 22px;
+  flex: 0 0 22px;
+  background: var(--title);
+  color: #fff;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  display: flex; align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+  margin-right: 2px;
+}
+
+.sm-items { flex: 1; display: flex; flex-direction: column; }
+
+.mi {
+  height: 20px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 6px;
+  cursor: default;
+  white-space: nowrap;
+}
+.mi:hover { background: var(--title); color: #fff; }
+.mi svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.mi .arr { margin-left: auto; font-size: 10px; }
+.mi.sep {
+  height: 2px;
+  margin: 3px 4px;
+  padding: 0;
+  background: var(--shadow);
+  border-bottom: 1px solid var(--white);
+  pointer-events: none;
+}
+
+/* ============ 应用内容样式 ============ */
+.pane {
+  background: #fff;
+  height: 100%;
+  overflow: auto;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #000;
+  cursor: text;
+  user-select: text;
+}
+.pane h2 { font-size: 13px; margin: 0 0 8px; font-weight: bold; }
+.pane p { margin: 0 0 8px; }
+.pane pre {
+  font-family: "SimSun", "宋体", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.pane .dim { color: #808080; }
+
+/* IE 浏览器 */
+.ie { display: flex; flex-direction: column; height: 100%; background: #C0C0C0; }
+
+.ie-menu {
+  display: flex;
+  padding: 1px 2px;
+  background: #C0C0C0;
+  border-bottom: 1px solid #808080;
+}
+.ie-menu span { padding: 2px 8px; font-size: 12px; }
+.ie-menu span:hover { background: #000080; color: #fff; }
+
+.ie-bar {
+  display: flex; align-items: center; gap: 3px;
+  padding: 2px 3px;
+  background: #C0C0C0;
+  border-bottom: 1px solid #808080;
+}
+.ie-tb {
+  height: 20px; padding: 0 6px;
+  font-family: inherit; font-size: 11px;
+  background: #C0C0C0;
+  border: 1px solid;
+  border-color: #fff #000 #000 #fff;
+  box-shadow: inset 1px 1px 0 #DFDFDF, inset -1px -1px 0 #808080;
+}
+.ie-tb:active {
+  border-color: #000 #fff #fff #000;
+  box-shadow: inset 1px 1px 0 #808080;
+}
+.ie-tb.go { padding: 0 8px; }
+
+.ie-addr {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 3px;
+  background: #fff;
+  border: 1px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.ie-addr label { flex: 0 0 auto; font-size: 11px; color: #505050; }
+.ie-addr input {
+  flex: 1 1 auto; min-width: 0;
+  border: 0; outline: 0; background: transparent;
+  font-family: inherit; font-size: 12px;
+}
+
+.ie-stage { flex: 1 1 auto; background: #fff; overflow: hidden; position: relative; }
+.ie-stage iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+.ie-welcome { padding: 16px 20px; font-size: 12px; line-height: 1.85; color: #000; }
+.ie-welcome h3 { margin: 0 0 10px; font-size: 17px; font-weight: bold; }
+.ie-welcome p { margin: 0 0 10px; }
+
+.ie-err { padding: 14px 18px; font-size: 12px; line-height: 1.8; color: #000; }
+.ie-err-h { margin-bottom: 12px; font-size: 20px; font-weight: bold; }
+.ie-err p { margin: 0 0 8px; }
+.ie-err hr { height: 0; margin: 12px 0; border: 0; border-top: 1px solid #808080; }
+.ie-err ul { margin: 4px 0 12px; padding-left: 22px; }
+.ie-err-foot { margin-top: 16px; color: #404040; }
+
+/* 实验游戏厅 */
+.hall { display: flex; height: 100%; background: #fff; }
+.hall-side {
+  width: 168px; flex: 0 0 168px;
+  border-right: 1px solid var(--shadow);
+  overflow: auto;
+  padding: 6px 0;
+  background: #fff;
+}
+.hall-sidehead {
+  font-size: 12px; color: #808080;
+  padding: 2px 10px 6px;
+  border-bottom: 1px solid #DFDFDF;
+  margin-bottom: 4px;
+}
+.hall-cat {
+  font-size: 12px; line-height: 20px;
+  padding: 0 10px; cursor: pointer;
+  display: flex; justify-content: space-between;
+  white-space: nowrap;
+}
+.hall-cat span { color: #808080; }
+.hall-cat:hover { background: #E8E8E8; }
+.hall-cat.on { background: var(--title); color: #fff; }
+.hall-cat.on span { color: #B0B0B0; }
+
+.hall-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hall-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-bottom: 1px solid var(--shadow);
+  background: var(--face);
+}
+.hall-bar input {
+  width: 200px; height: 20px;
+  font-family: inherit; font-size: 12px;
+  padding: 0 4px; border: 2px solid;
+  border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  background: #fff;
+}
+.hall-count { margin-left: auto; font-size: 12px; color: #404040; }
+
+.hall-bar label { font-size: 12px; color: #303030; }
+.hall-btn {
+  height: 20px; padding: 0 10px;
+  font-family: inherit; font-size: 12px;
+  background: var(--face);
+  border: 1px solid;
+  border-color: #fff #000 #000 #fff;
+  box-shadow: inset 1px 1px 0 #DFDFDF, inset -1px -1px 0 #808080;
+}
+.hall-btn:active {
+  border-color: #000 #fff #fff #000;
+  box-shadow: inset 1px 1px 0 #808080;
+}
+
+.hall-tablewrap { flex: 1; overflow: auto; background: #fff; }
+.hall-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.hall-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  height: 20px; padding: 0 6px;
+  text-align: left;
+  font-weight: normal;
+  color: #fff;
+  background: var(--title);
+  border-right: 1px solid #48508C;
+}
+.hall-table thead th:last-child { border-right: 0; }
+.hall-table td {
+  height: 34px; padding: 0 7px;
+  border-bottom: 1px solid #E4E4E4;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.hall-row { cursor: default; }
+.hall-row:nth-child(even) { background: #F7F7F7; }
+.hall-row:hover { background: #D8E4F0; }
+.hall-row.on { background: var(--title); color: #fff; }
+.hall-row.on .hall-gkind { color: #C4CCE4; }
+.hall-thumb { padding: 0 4px !important; }
+.hall-thumb img {
+  display: block; width: 56px; height: 32px;
+  object-fit: cover;
+  border: 1px solid #606060;
+}
+.hall-gkind { color: #606060; }
+
+.hall-foot {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #404040;
+  background: var(--face);
+  border-top: 1px solid var(--shadow);
+}
+
+.explorer {
+  display: flex; height: 100%;
+  background: #fff;
+}
+.explorer .tree {
+  width: 160px; flex: 0 0 160px;
+  border-right: 1px solid var(--shadow);
+  background: #fff;
+  overflow: auto;
+  padding: 4px;
+}
+.explorer .tree .node {
+  padding: 2px 4px;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px;
+  height: 20px;
+  white-space: nowrap;
+}
+.explorer .tree .node svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.explorer .tree .node:hover { background: #e8e8e8; }
+.explorer .tree .node.on { background: var(--title); color: #fff; }
+.explorer .tree .node.on svg path,
+.explorer .tree .node.on svg rect { }
+.explorer .list {
+  flex: 1; overflow: auto; padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  align-content: start;
+}
+.explorer .item {
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow: hidden;
+}
+.explorer .item div {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.explorer .item svg { width: 32px; height: 32px; display: block; margin: 0 auto 3px; }
+.explorer .item:hover { background: #e8e8e8; }
+.explorer .item.sel { background: var(--title); color: #fff; }
+
+/* 图鉴卡片 */
+.petgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  height: 100%;
+  overflow: auto;
+}
+.petcard {
+  border: 1px solid var(--shadow);
+  background: #f6f4ef;
+  padding: 10px;
+  text-align: center;
+}
+.petcard.off { opacity: .5; }
+.petcard .nm { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+.petcard .tag { font-size: 11px; color: #666; }
+.petcard .mark { font-size: 10px; color: var(--brand-dark); margin-top: 4px; }
+
+/* ============ 移动端降级 ============ */
+#mobile { display: none; }
+@media (max-width: 820px) {
+  #viewport { display: none; }
+  #mobile {
+    display: block;
+    position: fixed; inset: 0;
+    background: #10120f;
+    color: #e8e4da;
+    overflow-y: auto;
+    padding: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  #mobile .wrap { padding: 28px 20px 44px; max-width: 560px; margin: 0 auto; }
+  #mobile .kicker {
+    font-size: 11px; letter-spacing: 3px; color: #FF6A3D;
+    font-weight: 700; margin-bottom: 14px;
+    font-family: "SimSun", "宋体", monospace;
+  }
+  #mobile h1 { font-size: 24px; line-height: 1.35; margin: 0 0 10px; font-weight: 700; }
+  #mobile .sub { font-size: 14px; line-height: 1.7; color: #9a9a92; margin: 0 0 28px; }
+  #mobile .sec {
+    font-size: 12px; letter-spacing: 2px; color: #6f7268;
+    margin: 26px 0 4px; padding-bottom: 8px;
+    border-bottom: 1px solid #2a2d28;
+  }
+  #mobile .m-item {
+    display: block; padding: 14px 0 14px 0;
+    border-bottom: 1px solid #1e201c;
+    text-decoration: none; color: inherit;
+  }
+  #mobile .m-item .n { font-size: 15px; font-weight: 600; color: #e8e4da; }
+  #mobile .m-item .t {
+    font-size: 11px; color: #6f7268; margin-left: 8px;
+    font-family: "SimSun", "宋体", monospace;
+  }
+  #mobile .m-item .d { font-size: 13px; color: #9a9a92; margin-top: 4px; line-height: 1.55; }
+  #mobile .m-foot {
+    margin-top: 34px; font-size: 13px; line-height: 1.8; color: #7d8076;
+    border-top: 1px solid #2a2d28; padding-top: 18px;
+  }
+  #mobile .m-foot b { color: #e8e4da; font-weight: 600; }
+}
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="screen">
+    <div id="icons"></div>
+    <div id="windows"></div>
+    <div id="startmenu"></div>
+    <div id="taskbar">
+      <button id="startbtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1" width="6" height="6" fill="#FF6A3D"/><rect x="9" y="1" width="6" height="6" fill="#E8D44D"/><rect x="1" y="9" width="6" height="6" fill="#4C8C4A"/><rect x="9" y="9" width="6" height="6" fill="#3A6EA5"/></svg>开始</button>
+      <div id="tasklist"></div>
+      <div id="tray"><span id="clock">00:00</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="mobile"></div>
+
+<script>
+/* ============ 图标 ============ */
+/* 全部按 32×32 像素网格画：1px 黑描边，左上受光、右下背光，
+   每个物体都给出顶/正面两个色阶，圆一律用阶梯近似。不放抗锯齿曲线。 */
+const I = {
+computer: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="3" y="4" width="26" height="20" fill="#C0C0C0" stroke="#000"/><rect x="4" y="5" width="24" height="1" fill="#FFFFFF"/><rect x="4" y="5" width="1" height="18" fill="#FFFFFF"/><rect x="27" y="5" width="1" height="18" fill="#808080"/><rect x="4" y="22" width="24" height="1" fill="#808080"/><rect x="6" y="7" width="20" height="13" fill="#008080" stroke="#000"/><rect x="7" y="8" width="18" height="1" fill="#40A0A0"/><rect x="9" y="10" width="14" height="8" fill="#C0C0C0" stroke="#000"/><rect x="10" y="11" width="12" height="2" fill="#000080"/><rect x="10" y="14" width="12" height="3" fill="#FFFFFF"/><rect x="12" y="24" width="8" height="3" fill="#C0C0C0" stroke="#000"/><rect x="9" y="27" width="14" height="2" fill="#C0C0C0" stroke="#000"/><rect x="10" y="28" width="12" height="1" fill="#808080"/></svg>',
+
+horse: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="5" y="4" width="22" height="24" fill="#C43D15" stroke="#000"/><rect x="6" y="5" width="4" height="22" fill="#8B2A0F"/><rect x="11" y="5" width="14" height="22" fill="#FF6A3D"/><rect x="11" y="5" width="14" height="1" fill="#FF9A75"/><rect x="25" y="5" width="1" height="22" fill="#FFFFFF"/><rect x="13" y="8" width="4" height="11" fill="#FFD24D"/><rect x="19" y="8" width="4" height="11" fill="#FFD24D"/><rect x="13" y="15" width="10" height="4" fill="#FFD24D"/><rect x="6" y="27" width="20" height="1" fill="#000"/></svg>',
+
+bin: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="13" y="2" width="6" height="3" fill="#808080" stroke="#000"/><rect x="6" y="5" width="20" height="3" fill="#C0C0C0" stroke="#000"/><rect x="7" y="6" width="18" height="1" fill="#DFDFDF"/><rect x="7" y="8" width="18" height="2" fill="#808080" stroke="#000"/><path d="M7 10 L25 10 L23 28 L9 28 Z" fill="#C0C0C0" stroke="#000"/><rect x="8" y="11" width="1" height="16" fill="#DFDFDF"/><rect x="23" y="11" width="1" height="15" fill="#808080"/><rect x="12" y="12" width="1" height="14" fill="#808080"/><rect x="16" y="12" width="1" height="14" fill="#808080"/><rect x="20" y="12" width="1" height="14" fill="#808080"/></svg>',
+
+doc: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><path d="M7 2 L19 2 L24 7 L24 30 L7 30 Z" fill="#FFFFFF" stroke="#000"/><path d="M19 2 L24 7 L19 7 Z" fill="#C0C0C0" stroke="#000"/><rect x="23" y="8" width="1" height="21" fill="#DFDFDF"/><rect x="9" y="11" width="12" height="1" fill="#808080"/><rect x="9" y="14" width="12" height="1" fill="#808080"/><rect x="9" y="17" width="12" height="1" fill="#808080"/><rect x="9" y="20" width="8" height="1" fill="#808080"/><rect x="8" y="29" width="16" height="1" fill="#000"/></svg>',
+
+survivors: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="3" y="5" width="26" height="20" fill="#5B5B5B" stroke="#000"/><rect x="4" y="6" width="24" height="1" fill="#8A8A8A"/><rect x="5" y="7" width="22" height="16" fill="#1A1A2E" stroke="#000"/><rect x="6" y="8" width="20" height="1" fill="#2E2E4A"/><rect x="14" y="10" width="4" height="4" fill="#FF6A3D"/><rect x="15" y="11" width="1" height="1" fill="#FFFFFF"/><rect x="17" y="11" width="1" height="1" fill="#FFFFFF"/><rect x="13" y="14" width="6" height="5" fill="#FF6A3D"/><rect x="13" y="19" width="2" height="3" fill="#FF6A3D"/><rect x="17" y="19" width="2" height="3" fill="#FF6A3D"/><rect x="7" y="20" width="3" height="3" fill="#C73E1D"/><rect x="22" y="18" width="3" height="3" fill="#C73E1D"/><rect x="13" y="25" width="6" height="2" fill="#5B5B5B" stroke="#000"/></svg>',
+
+safari: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="3" y="5" width="26" height="22" fill="#8B5E3C" stroke="#000"/><rect x="4" y="6" width="24" height="1" fill="#B08050"/><rect x="5" y="7" width="22" height="18" fill="#5B8FB9" stroke="#000"/><rect x="6" y="8" width="20" height="6" fill="#7FB3D8"/><rect x="22" y="8" width="3" height="3" fill="#FFD24D"/><path d="M5 19 L10 13 L15 19 Z" fill="#3A6EA5"/><path d="M13 19 L19 11 L26 19 Z" fill="#2E5F8A"/><rect x="17" y="10" width="2" height="2" fill="#1B1B1B"/><rect x="19" y="9" width="2" height="2" fill="#1B1B1B"/><rect x="21" y="10" width="2" height="2" fill="#1B1B1B"/><rect x="6" y="23" width="20" height="1" fill="#4C8C4A"/></svg>',
+
+spacetime: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><polygon points="16,2 29,9 16,16 3,9" fill="#FFB48A" stroke="#000"/><polygon points="3,9 16,16 16,30 3,23" fill="#FF6A3D" stroke="#000"/><polygon points="29,9 16,16 16,30 29,23" fill="#C43D15" stroke="#000"/><polygon points="16,3 27,9 16,15 5,9" fill="#FFD0B8"/></svg>',
+
+cowboy: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="3" y="19" width="26" height="4" fill="#8B5E3C" stroke="#000"/><rect x="5" y="19" width="22" height="1" fill="#B08050"/><rect x="4" y="22" width="24" height="1" fill="#63412A"/><path d="M11 19 L12 9 L15 6 L17 6 L20 9 L21 19 Z" fill="#A0682F" stroke="#000"/><rect x="12" y="10" width="2" height="9" fill="#C08A50"/><rect x="19" y="10" width="2" height="9" fill="#7A4A2A"/><rect x="11" y="16" width="10" height="3" fill="#3A2A1A"/><rect x="15" y="17" width="2" height="1" fill="#E8B04B"/></svg>',
+
+fireworks: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="2" y="2" width="28" height="28" fill="#1A1A2E" stroke="#000"/><rect x="3" y="3" width="26" height="1" fill="#2E2E4A"/><rect x="15" y="4" width="2" height="7" fill="#FF6A3D"/><rect x="15" y="21" width="2" height="7" fill="#FF6A3D"/><rect x="4" y="15" width="7" height="2" fill="#FF6A3D"/><rect x="21" y="15" width="7" height="2" fill="#FF6A3D"/><rect x="7" y="8" width="2" height="2" fill="#FF6A3D"/><rect x="9" y="10" width="2" height="2" fill="#FF6A3D"/><rect x="23" y="8" width="2" height="2" fill="#FF6A3D"/><rect x="21" y="10" width="2" height="2" fill="#FF6A3D"/><rect x="7" y="22" width="2" height="2" fill="#FF6A3D"/><rect x="9" y="20" width="2" height="2" fill="#FF6A3D"/><rect x="23" y="22" width="2" height="2" fill="#FF6A3D"/><rect x="21" y="20" width="2" height="2" fill="#FF6A3D"/><rect x="14" y="14" width="4" height="4" fill="#FFD24D"/><rect x="5" y="5" width="2" height="2" fill="#FFB48A"/><rect x="25" y="5" width="2" height="2" fill="#FFB48A"/><rect x="5" y="25" width="2" height="2" fill="#FFB48A"/><rect x="25" y="25" width="2" height="2" fill="#FFB48A"/></svg>',
+
+perler: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="4" y="4" width="24" height="24" fill="#FFFFFF" stroke="#000"/><rect x="5" y="27" width="22" height="1" fill="#C0C0C0"/><rect x="9" y="5" width="1" height="22" fill="#E8E8E8"/><rect x="14" y="5" width="1" height="22" fill="#E8E8E8"/><rect x="19" y="5" width="1" height="22" fill="#E8E8E8"/><rect x="24" y="5" width="1" height="22" fill="#E8E8E8"/><rect x="5" y="9" width="22" height="1" fill="#E8E8E8"/><rect x="5" y="14" width="22" height="1" fill="#E8E8E8"/><rect x="5" y="19" width="22" height="1" fill="#E8E8E8"/><rect x="5" y="24" width="22" height="1" fill="#E8E8E8"/><rect x="10" y="10" width="4" height="4" fill="#FF6A3D"/><rect x="10" y="10" width="2" height="1" fill="#FF9A75"/><rect x="15" y="10" width="4" height="4" fill="#3A6EA5"/><rect x="15" y="10" width="2" height="1" fill="#6FA3D8"/><rect x="20" y="15" width="4" height="4" fill="#E8B04B"/><rect x="20" y="15" width="2" height="1" fill="#FFD77A"/><rect x="10" y="20" width="4" height="4" fill="#4C8C4A"/><rect x="10" y="20" width="2" height="1" fill="#7AB878"/></svg>',
+
+inspire: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="15" y="9" width="2" height="6" fill="#808080"/><rect x="15" y="19" width="2" height="6" fill="#808080"/><rect x="9" y="15" width="6" height="2" fill="#808080"/><rect x="19" y="15" width="6" height="2" fill="#808080"/><rect x="11" y="3" width="10" height="7" fill="#FF6A3D" stroke="#000"/><rect x="11" y="3" width="10" height="1" fill="#FF9A75"/><rect x="11" y="24" width="10" height="7" fill="#4C8C4A" stroke="#000"/><rect x="11" y="24" width="10" height="1" fill="#7AB878"/><rect x="2" y="11" width="7" height="10" fill="#3A6EA5" stroke="#000"/><rect x="2" y="11" width="7" height="1" fill="#6FA3D8"/><rect x="23" y="11" width="7" height="10" fill="#E8B04B" stroke="#000"/><rect x="23" y="11" width="7" height="1" fill="#FFD77A"/><rect x="11" y="11" width="10" height="10" fill="#C0C0C0" stroke="#000"/><rect x="11" y="11" width="10" height="1" fill="#FFFFFF"/></svg>',
+
+drone: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="2" y="4" width="11" height="3" fill="#C0C0C0" stroke="#000"/><rect x="3" y="5" width="9" height="1" fill="#FFFFFF"/><rect x="19" y="4" width="11" height="3" fill="#C0C0C0" stroke="#000"/><rect x="20" y="5" width="9" height="1" fill="#FFFFFF"/><rect x="2" y="25" width="11" height="3" fill="#C0C0C0" stroke="#000"/><rect x="3" y="26" width="9" height="1" fill="#FFFFFF"/><rect x="19" y="25" width="11" height="3" fill="#C0C0C0" stroke="#000"/><rect x="20" y="26" width="9" height="1" fill="#FFFFFF"/><rect x="7" y="7" width="2" height="5" fill="#808080"/><rect x="23" y="7" width="2" height="5" fill="#808080"/><rect x="7" y="20" width="2" height="5" fill="#808080"/><rect x="23" y="20" width="2" height="5" fill="#808080"/><rect x="12" y="11" width="8" height="10" fill="#5B5B5B" stroke="#000"/><rect x="12" y="11" width="8" height="1" fill="#8A8A8A"/><rect x="14" y="14" width="4" height="3" fill="#FF6A3D"/></svg>',
+
+folder: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><path d="M3 7 L12 7 L15 10 L29 10 L29 27 L3 27 Z" fill="#F0C43C" stroke="#000"/><path d="M4 9 L12 9 L14 11 L28 11 L28 13 L4 13 Z" fill="#FFE38A"/><rect x="4" y="14" width="24" height="12" fill="#FFDD77"/><rect x="4" y="26" width="24" height="1" fill="#C49A20"/></svg>',
+
+hall: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="4" y="3" width="24" height="24" fill="#4A4A4A" stroke="#000"/><rect x="5" y="4" width="22" height="1" fill="#707070"/><rect x="7" y="6" width="18" height="11" fill="#1A1A2E" stroke="#000"/><rect x="8" y="7" width="16" height="1" fill="#2E2E4A"/><rect x="9" y="9" width="5" height="5" fill="#FF6A3D"/><rect x="16" y="9" width="6" height="2" fill="#FFD24D"/><rect x="16" y="12" width="6" height="2" fill="#4C8C4A"/><rect x="6" y="19" width="20" height="6" fill="#2A2A2A"/><rect x="9" y="20" width="2" height="2" fill="#C73E1D"/><rect x="10" y="22" width="1" height="2" fill="#808080"/><rect x="16" y="21" width="3" height="2" fill="#E8B04B"/><rect x="20" y="21" width="2" height="2" fill="#3A6EA5"/><rect x="5" y="27" width="22" height="2" fill="#3A3A3A" stroke="#000"/></svg>',
+
+logo: '<svg viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="1" width="6" height="6" fill="#FF6A3D"/><rect x="9" y="1" width="6" height="6" fill="#E8D44D"/><rect x="1" y="9" width="6" height="6" fill="#4C8C4A"/><rect x="9" y="9" width="6" height="6" fill="#3A6EA5"/></svg>',
+ie: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="1" y="12" width="30" height="4" fill="#FFC21A"/><rect x="3" y="9" width="26" height="3" fill="#FFD95C"/><rect x="3" y="16" width="26" height="4" fill="#C8871A"/><rect x="5" y="7" width="22" height="2" fill="#FFE9A8"/><rect x="5" y="20" width="22" height="2" fill="#8C5B0E"/><rect x="9" y="11" width="4" height="3" fill="#0B3D91"/><rect x="13" y="9" width="8" height="4" fill="#0B3D91"/><rect x="21" y="11" width="3" height="3" fill="#0B3D91"/><rect x="9" y="14" width="4" height="7" fill="#0B3D91"/><rect x="9" y="21" width="4" height="3" fill="#0B3D91"/><rect x="13" y="21" width="9" height="3" fill="#0B3D91"/><rect x="22" y="18" width="3" height="3" fill="#0B3D91"/><rect x="13" y="16" width="9" height="3" fill="#C8871A"/></svg>'
+};
+
+/* 实验游戏厅：40 个原型，数据来自 tools/games-hub-40.json */
+const GAMES = [
+[96,'候 · 它们在等，不在催','文字','096-unread'],
+[121,'暗 · 那是衣架','治愈休息','121-darkshapes'],
+[123,'先 · 你先走也行','解谜','123-leaveearly'],
+[208,'光蛇 · 越长越亮','反应街机','208-lightsnake'],
+[238,'守塔 · 一路挡住','塔防','238-towerdefense'],
+[240,'穿隙 · 越飞越远','物理','240-flap'],
+[261,'彩环穿行 · 切对色穿过','弹球弹射','261-chromaring'],
+[277,'坠露 · 落进那片绿','反应街机','277-dewfall'],
+[279,'赶海 · 潮退的一程','绘画创作','279-tideforage'],
+[280,'放鸢 · 把线放长一点','治愈休息','280-windline'],
+[282,'挑灯 · 一条街的光','物理','282-lanternrow'],
+[283,'引泉 · 石上苔','弹球弹射','283-springrun'],
+[284,'回声 · 一室钟','物理','284-echobell'],
+[285,'引灯 · 洄游夜','合成','285-gatherlight'],
+[286,'匀墨 · 五色池','绘画创作','286-inkpool'],
+[287,'断崖 · 墨阶','绘画创作','287-inkcliff'],
+[288,'潮信 · 招潮','物理','288-tidecall'],
+[289,'极光 · 合声','音乐音游','289-aurorachorus'],
+[290,'取景 · 一镜','治愈休息','290-viewfinder'],
+[291,'拼贴 · 撕纸局','合成','291-papercollage'],
+[292,'雾江 · 无刹渡','治愈休息','292-mistferry'],
+[293,'秤星 · 悬衡谷','射击','293-scalebeam'],
+[294,'藏冬 · 松果纪','音乐音游','294-wintercache'],
+[295,'便当 · 压格子','收纳','295-bentopress'],
+[296,'粉线 · 引珠坡','解谜','296-chalkflow'],
+[297,'落沙 · 引猫夜','反应街机','297-sandcat'],
+[298,'气泡 · 深潜','物理','298-bubbledive'],
+[299,'归架 · 轻重','收纳','299-tiltshelf'],
+[300,'倒影 · 影随形','解谜','300-mirrorwalk'],
+[301,'合字 · 水诗','合成','301-waterpoem'],
+[302,'雪径 · 开路','反应街机','302-snowtrail'],
+[305,'移荫 · 一日阴','收纳','305-shadowyard'],
+[308,'叠石 · 一溪','弹球弹射','308-stonestack'],
+[315,'暗绿 · 一笺光','解谜','315-greenglow'],
+[325,'风隙 · 稳光','射击','325-windgap'],
+[328,'星轨 · 引力穿行','合成','328-starlane'],
+[346,'引光 · 一镜明','解谜','346-lightpath'],
+['252','方块 · 落定成行','消除','252-tetris'],
+['cardflip','拍卡片 · 翻面','物理','card-slap'],
+['glass','玻璃球 · 弹珠出圈','射击','glass-marbles']
+];
+
+/* ============ 作品 ============ */
+const WORKS = [
+  { key:'survivors', name:'时空幸存者',  full:'Time Survivors',      type:'GAME',      url:'https://survivors.wildcode.cn', desc:'怪潮里活下去，升级，进化' },
+  { key:'safari',    name:'飞鸟巡游',    full:'Bird Flight Safari',  type:'WALLPAPER', url:'https://safari.wildcode.cn',    desc:'一只鸟穿过五个场景' },
+  { key:'spacetime', name:'时空立方体',  full:'Space-Time Cube',     type:'TOOL',      url:'https://spacetime.wildcode.cn', desc:'把视频的每一帧堆起来看时间' },
+  { key:'cowboy',    name:'旅行牛仔',    full:'Traveling Cowboy',    type:'WALLPAPER', url:'https://cowboy.wildcode.cn',    desc:'西部荒野，随便走' },
+  { key:'fireworks', name:'烟花工坊',    full:'Fireworks Studio',    type:'TOOL',      url:'https://fireworks.wildcode.cn', desc:'像调酒一样调烟花' },
+  { key:'perler',    name:'拼豆图纸',    full:'Perler Bead Generator', type:'TOOL',    url:'https://perler.wildcode.cn',    desc:'图片转拼豆图纸，不上传' },
+  { key:'inspire',   name:'灵感图谱',    full:'InspireGraph',        type:'TOOL',      url:'https://inspire.wildcode.cn',   desc:'概念长成神经元，自己演化' },
+  { key:'drone',     name:'无人机表演',  full:'Drone Show',          type:'TOOL',      url:'https://drone.wildcode.cn',     desc:'排队形，编节目，导出 JSON' }
+];
+
+/* ============ 桌面布局 ============ */
+const DESKTOP = [
+  { id:'mycomp', label:'我的电脑',   icon:'computer', x:20,  y:16  },
+  { id:'hall',   label:'实验游戏厅', icon:'hall',     x:20,  y:92  },
+  { id:'pets',   label:'野马图鉴',   icon:'horse',    x:20,  y:168 },
+  { id:'bin',    label:'回收站',     icon:'bin',      x:20,  y:244 },
+  { id:'about',  label:'关于野码',   icon:'doc',      x:20,  y:320 },
+  { id:'ie',     label:'Internet Explorer', icon:'ie', x:20, y:396 }
+].concat(WORKS.map((w, i) => ({
+  id: w.key, label: w.name, icon: w.key, x: 196, y: 16 + i * 76
+})));
+
+/* ============ 文案 ============ */
+const TEXT_README = `野码 / WILD CODE
+
+一个人在重庆，写代码第十一年。
+大部分时间在给客户做东西，剩下的时间做这些没用的。
+
+这些没用的东西都在这儿了。
+四十个，从七月开始，一天一个，做到十月停了。
+有的能玩五分钟，有的只能玩三十秒。
+但它们都是真的，不是截图，不是概念图，点开就能动。
+
+这个站没有登录，没有注册，没有会员。
+不收集你的任何东西。
+
+—— 荒野`;
+
+const TEXT_RULES = `这里是我的实验场，不是商店。
+
+1. 玩，随便玩。玩坏了不用赔。
+2. 觉得哪里不对，直接说。说难听点也行，我扛得住。
+3. 想骂两句，去留言板。我会看，不一定回。
+4. 别在这儿发广告，别传违法内容。
+5. 这些都是我一个人做的，慢，但会一直加。
+
+就这些。`;
+
+const TEXTS = { readme: TEXT_README, rules: TEXT_RULES };
+
+/* ============================================================
+   核心
+   ============================================================ */
+(function () {
+
+const screenEl = document.getElementById('screen');
+const iconsEl  = document.getElementById('icons');
+const winsEl   = document.getElementById('windows');
+const taskEl   = document.getElementById('tasklist');
+const clockEl  = document.getElementById('clock');
+const menuEl   = document.getElementById('startmenu');
+const startBtn = document.getElementById('startbtn');
+
+/* ---------- 缩放 ---------- */
+function fit() {
+  const s = Math.min(innerWidth / 1024, innerHeight / 768);
+  document.documentElement.style.setProperty('--s', Math.max(0.3, s));
+}
+addEventListener('resize', fit);
+fit();
+
+function toLogical(cx, cy) {
+  const r = screenEl.getBoundingClientRect();
+  const s = r.width / 1024 || 1;
+  return { x: (cx - r.left) / s, y: (cy - r.top) / s };
+}
+
+/* ---------- 窗口 ---------- */
+const WINS = new Map();
+let zTop = 10;
+let widen = 0;
+let cascade = 0;
+
+function placeOf(w, h) {
+  const i = cascade;
+  cascade = (cascade + 1) % 7;
+  return {
+    x: Math.max(8, Math.min(120 + i * 24, 1024 - w - 8)),
+    y: Math.max(8, Math.min(70 + i * 24, 740 - h - 8))
+  };
+}
+
+function openWin(spec) {
+  const id = spec.id;
+  if (WINS.has(id)) { focusWin(id); return id; }
+
+  const w = spec.w || 640;
+  const h = spec.h || 460;
+  const p = placeOf(w, h);
+
+  const el = document.createElement('div');
+  el.className = 'win active';
+  el.dataset.id = id;
+  el.style.cssText =
+    `left:${p.x}px;top:${p.y}px;width:${w}px;height:${h}px;z-index:${++zTop}`;
+
+  el.innerHTML =
+    `<div class="titlebar">
+       <span style="display:contents">${I[spec.icon] || I.doc}</span>
+       <div class="tt">${esc(spec.title)}</div>
+       <div class="tbtns">
+         <button class="tb" data-a="min" title="最小化">_</button>
+         <button class="tb" data-a="max" title="最大化">□</button>
+         <button class="tb close" data-a="close" title="关闭">×</button>
+       </div>
+     </div>
+     <div class="wbody"></div>
+     ${spec.status ? `<div class="statusbar">${spec.status}</div>` : ''}`;
+
+  winsEl.appendChild(el);
+
+  const body = el.querySelector('.wbody');
+  if (spec.render) spec.render(body, el);
+
+  WINS.set(id, { id, el, body, spec, z: zTop, state: 'normal', restore: null });
+  bindWin(id);
+  focusWin(id);
+  syncTasks();
+  return id;
+}
+
+function bindWin(id) {
+  const w = WINS.get(id);
+  const el = w.el;
+
+  el.addEventListener('pointerdown', () => focusWin(id), true);
+
+  el.querySelector('.tbtns').addEventListener('click', e => {
+    const b = e.target.closest('.tb');
+    if (!b) return;
+    e.stopPropagation();
+    if (b.dataset.a === 'min')   minWin(id);
+    if (b.dataset.a === 'max')   maxWin(id);
+    if (b.dataset.a === 'close') closeWin(id);
+  });
+
+  const bar = el.querySelector('.titlebar');
+  bar.addEventListener('dblclick', e => {
+    if (e.target.closest('.tb')) return;
+    maxWin(id);
+  });
+
+  let dragging = false, offX = 0, offY = 0;
+  bar.addEventListener('pointerdown', e => {
+    if (e.target.closest('.tb')) return;
+    if (w.state === 'max') return;
+    const pt = toLogical(e.clientX, e.clientY);
+    const left = parseFloat(el.style.left);
+    const top  = parseFloat(el.style.top);
+    offX = pt.x - left;
+    offY = pt.y - top;
+    dragging = true;
+    bar.setPointerCapture(e.pointerId);
+    el.style.transition = 'none';
+  });
+  bar.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const pt = toLogical(e.clientX, e.clientY);
+    const ww = el.offsetWidth;
+    let nx = pt.x - offX;
+    let ny = pt.y - offY;
+    nx = Math.max(-ww + 64, Math.min(nx, 1024 - 64));
+    ny = Math.max(0, Math.min(ny, 740 - 18));
+    el.style.left = nx + 'px';
+    el.style.top  = ny + 'px';
+  });
+  bar.addEventListener('pointerup', () => { dragging = false; });
+}
+
+function focusWin(id) {
+  const w = WINS.get(id);
+  if (!w || w.state === 'min') return;
+  WINS.forEach(o => o.el.classList.remove('active'));
+  w.el.classList.add('active');
+  w.el.style.zIndex = ++zTop;
+  w.z = zTop;
+  document.querySelectorAll('.taskbtn').forEach(b =>
+    b.classList.toggle('active', b.dataset.id === id));
+}
+
+function minWin(id) {
+  const w = WINS.get(id);
+  w.state = 'min';
+  w.el.style.display = 'none';
+  syncTasks();
+}
+
+function maxWin(id) {
+  const w = WINS.get(id);
+  if (w.state === 'max') { restoreWin(id); return; }
+  w.restore = {
+    l: w.el.style.left, t: w.el.style.top,
+    w: w.el.style.width, h: w.el.style.height
+  };
+  w.state = 'max';
+  w.el.style.left = '0px';
+  w.el.style.top = '0px';
+  w.el.style.width = '1024px';
+  w.el.style.height = '740px';
+  w.el.querySelector('[data-a="max"]').textContent = '❐';
+}
+
+function restoreWin(id) {
+  const w = WINS.get(id);
+  w.state = 'normal';
+  w.el.style.left = w.restore.l;
+  w.el.style.top = w.restore.t;
+  w.el.style.width = w.restore.w;
+  w.el.style.height = w.restore.h;
+  w.el.querySelector('[data-a="max"]').textContent = '□';
+}
+
+function closeWin(id) {
+  const w = WINS.get(id);
+  if (!w) return;
+  const f = w.body.querySelector('iframe');
+  if (f) { f.src = 'about:blank'; }
+  w.el.remove();
+  WINS.delete(id);
+  syncTasks();
+}
+
+function syncTasks() {
+  taskEl.innerHTML = '';
+  [...WINS.values()].sort((a, b) => a.z - b.z).forEach(w => {
+    const b = document.createElement('button');
+    b.className = 'taskbtn' + (w.el.classList.contains('active') ? ' active' : '');
+    b.dataset.id = w.id;
+    b.innerHTML = `${I[w.spec.icon] || I.doc}<span>${esc(w.spec.title)}</span>`;
+    b.addEventListener('click', () => {
+      if (w.state === 'min') {
+        w.state = 'normal';
+        w.el.style.display = '';
+        focusWin(w.id);
+        syncTasks();
+      } else if (w.el.classList.contains('active')) {
+        minWin(w.id);
+      } else {
+        focusWin(w.id);
+      }
+    });
+    taskEl.appendChild(b);
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ---------- 桌面图标 ---------- */
+let selIcon = null;
+
+function renderDesktop() {
+  iconsEl.innerHTML = '';
+  DESKTOP.forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'icon';
+    d.style.left = it.x + 'px';
+    d.style.top  = it.y + 'px';
+    d.dataset.id = it.id;
+    d.innerHTML = `${I[it.icon] || I.doc}<span>${esc(it.label)}</span>`;
+    d.firstChild.classList.add('ic');
+    d.addEventListener('click', () => {
+      selectIcon(d);
+    });
+    d.addEventListener('dblclick', () => {
+      if (Date.now() - (d._dragEndAt || 0) < 400) return;
+      selectIcon(d);
+      launch(it.id);
+    });
+    iconsEl.appendChild(d);
+  });
+}
+
+function selectIcon(el) {
+  if (selIcon) selIcon.classList.remove('sel');
+  el.classList.add('sel');
+  selIcon = el;
+}
+
+/* 图标拖动：按住挪位置，移动不到 4px 算点击 */
+let dragIcon = null, dragOffX = 0, dragOffY = 0;
+let dragFromX = 0, dragFromY = 0, dragMoved = false;
+
+iconsEl.addEventListener('pointerdown', e => {
+  closeMenu();
+  const el = e.target.closest('.icon');
+  if (!el) {
+    if (selIcon) selIcon.classList.remove('sel');
+    selIcon = null;
+    return;
+  }
+  selectIcon(el);
+  const pt = toLogical(e.clientX, e.clientY);
+  dragIcon = el;
+  dragOffX = pt.x - parseFloat(el.style.left || 0);
+  dragOffY = pt.y - parseFloat(el.style.top || 0);
+  dragFromX = e.clientX;
+  dragFromY = e.clientY;
+  dragMoved = false;
+  try { el.setPointerCapture(e.pointerId); } catch (err) {}
+});
+
+iconsEl.addEventListener('pointermove', e => {
+  if (!dragIcon) return;
+  if (!dragMoved) {
+    if (Math.abs(e.clientX - dragFromX) < 4 && Math.abs(e.clientY - dragFromY) < 4) return;
+    dragMoved = true;
+    dragIcon.style.zIndex = 6;
+    dragIcon.style.opacity = '0.8';
+  }
+  const pt = toLogical(e.clientX, e.clientY);
+  const nx = Math.max(0, Math.min(pt.x - dragOffX, 1024 - 88));
+  const ny = Math.max(0, Math.min(pt.y - dragOffY, 740 - 76));
+  dragIcon.style.left = nx + 'px';
+  dragIcon.style.top  = ny + 'px';
+});
+
+iconsEl.addEventListener('pointerup', () => {
+  if (!dragIcon) return;
+  const el = dragIcon;
+  el.style.zIndex = '';
+  el.style.opacity = '';
+  if (dragMoved) el._dragEndAt = Date.now();
+  dragIcon = null;
+});
+
+/* ---------- 启动 ---------- */
+/* 同源 iframe 里也屏蔽原生右键。跨域的拿不到 contentDocument，浏览器不允许，只能空着 */
+function hardenFrame(f) {
+  const apply = () => {
+    try {
+      const d = f.contentDocument;
+      if (!d) return;
+      d.addEventListener('contextmenu', e => e.preventDefault());
+    } catch (err) { /* 跨域，静默 */ }
+  };
+  f.addEventListener('load', apply);
+  apply();
+}
+
+function launch(id) {
+  const work = WORKS.find(w => w.key === id);
+  if (work) {
+    openWin({
+      id: 'w-' + id,
+      title: work.name,
+      icon: id,
+      w: 760, h: 560,
+      status:
+        `<span class="seg">${esc(work.full)}</span>` +
+        `<span class="seg">${esc(work.type)}</span>` +
+        `<span style="margin-left:auto">${esc(work.url.replace('https://', ''))}</span>`,
+      render: body => {
+        const f = document.createElement('iframe');
+        f.src = work.url;
+        f.setAttribute('allowfullscreen', '');
+        f.setAttribute('referrerpolicy', 'no-referrer');
+        hardenFrame(f);
+        body.appendChild(f);
+      }
+    });
+    return;
+  }
+  if (id === 'hall') openWin({
+    id: 'w-hall', title: '实验游戏厅', icon: 'hall', w: 900, h: 600,
+    status: '<span class="seg">40 个原型</span><span class="seg">双击一行打开</span>',
+    render: renderHall
+  });
+  if (id === 'mycomp') openWin({
+    id: 'w-mycomp', title: '我的电脑', icon: 'computer', w: 640, h: 420,
+    status: '<span class="seg">4 个对象</span>',
+    render: renderMyComp
+  });
+  if (id === 'pets') openWin({
+    id: 'w-pets', title: '野马图鉴', icon: 'horse', w: 660, h: 460,
+    status: '<span class="seg">1 / 6 已上线</span>',
+    render: renderPets
+  });
+  if (id === 'bin') openWin({
+    id: 'w-bin', title: '回收站', icon: 'bin', w: 480, h: 340,
+    status: '<span class="seg">6 个对象</span>',
+    render: renderBin
+  });
+  if (id === 'about') openWin({
+    id: 'w-about', title: '关于野码', icon: 'doc', w: 560, h: 440,
+    status: '<span class="seg">README.txt</span>',
+    render: b => { b.innerHTML = `<div class="pane"><pre>${esc(TEXTS.readme)}</pre></div>`; }
+  });
+  if (id === 'ie') openWin({
+    id: 'w-ie', title: 'Internet Explorer', icon: 'ie', w: 720, h: 520,
+    status: '<span class="seg">完成</span>',
+    render: renderIE
+  });
+}
+
+/* ---------- IE 浏览器 ---------- */
+function renderIE(body, el) {
+  const HOME = 'https://wildcode.cn/';
+  const hist = [];
+  let at = -1;
+  const sb = el.querySelector('.statusbar');
+  const setStatus = t => { if (sb) sb.innerHTML = `<span class="seg">${esc(t)}</span>`; };
+
+  body.innerHTML = `
+    <div class="ie">
+      <div class="ie-menu">
+        ${['文件','编辑','查看','收藏','工具','帮助'].map((t, i) => `<span data-m="${i}">${t}</span>`).join('')}
+      </div>
+      <div class="ie-bar">
+        <button class="ie-tb" data-a="back">后退</button>
+        <button class="ie-tb" data-a="fwd">前进</button>
+        <button class="ie-tb" data-a="stop">停止</button>
+        <button class="ie-tb" data-a="reload">刷新</button>
+        <button class="ie-tb" data-a="home">主页</button>
+        <div class="ie-addr">
+          <label>地址</label>
+          <input id="ieAddr" spellcheck="false" value="${esc(HOME)}">
+        </div>
+        <button class="ie-tb go" data-a="go">转到</button>
+      </div>
+      <div class="ie-stage" id="ieStage"></div>
+    </div>`;
+
+  const stage = body.querySelector('#ieStage');
+  const addr  = body.querySelector('#ieAddr');
+
+  function welcome() {
+    stage.innerHTML = `
+      <div class="ie-welcome">
+        <h3>欢迎使用 Internet Explorer</h3>
+        <p>这台机器上的 IE 只能看看，不能装东西，也不能保存网页。</p>
+        <p>在地址栏里敲一个域名，按回车或者点<b>转到</b>。比如 <b>wildcode.cn</b>，或者 <b>survivors.windcode.cn</b>。</p>
+        <p><b>收藏</b>菜单里有几个现成的。</p>
+      </div>`;
+    setStatus('完成');
+  }
+
+  function errorPage(u) {
+    stage.innerHTML = `
+      <div class="ie-err">
+        <div class="ie-err-h">无法显示网页</div>
+        <p>野码 Internet Explorer 找不到 <b>${esc(u)}</b>。可能是地址拼错了，也可能这台机器根本没联网。</p>
+        <hr>
+        <p>请尝试以下操作：</p>
+        <ul>
+          <li>单击<b>刷新</b>按钮，或稍后重试。</li>
+          <li>如果是在地址栏里输入的地址，确认拼写正确。</li>
+          <li>只认完整域名，比如 <b>wildcode.cn</b>。</li>
+        </ul>
+        <div class="ie-err-foot">找不到服务器或 DNS 错误<br>Internet Explorer</div>
+      </div>`;
+    setStatus('找不到服务器或 DNS 错误');
+  }
+
+  function norm(u) {
+    u = String(u).trim();
+    if (!u) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(\/|$)/i.test(u)) return 'https://' + u;
+    return '';
+  }
+
+  function load(u, push) {
+    const url = norm(u);
+    if (!url) { errorPage(u || '空白地址'); return; }
+    if (push) { hist.length = at + 1; hist.push(url); at = hist.length - 1; }
+    addr.value = url;
+    setStatus('正在打开网页...');
+    const f = document.createElement('iframe');
+    f.setAttribute('referrerpolicy', 'no-referrer');
+    f.src = url;
+    hardenFrame(f);
+    f.addEventListener('load', () => setStatus('完成'));
+    stage.innerHTML = '';
+    stage.appendChild(f);
+  }
+
+  function stopLoad() {
+    const f = stage.querySelector('iframe');
+    if (f) f.src = 'about:blank';
+    stage.innerHTML = '<div class="ie-welcome"><p>已停止加载。</p></div>';
+    setStatus('已停止');
+  }
+
+  const MENUS = {
+    0: () => [
+      { label: '新建窗口', disabled: true },
+      { label: '打开', disabled: true },
+      { sep: true },
+      { label: '打印', disabled: true },
+      { label: '保存', disabled: true },
+      { sep: true },
+      { label: '关闭', act: () => closeWin('w-ie') }
+    ],
+    1: () => [
+      { label: '剪切', disabled: true },
+      { label: '复制', disabled: true },
+      { label: '粘贴', disabled: true },
+      { sep: true },
+      { label: '全选', act: () => msgBox({ text: '这个窗口里只有一页网页，没有能全选的东西。', icon: 'info' }) }
+    ],
+    2: () => [
+      { label: '刷新', act: () => { if (at >= 0) load(hist[at]); else welcome(); } },
+      { label: '停止', act: stopLoad },
+      { sep: true },
+      { label: '查看源文件', act: () => msgBox({ text: '网页在别的域名下，这个窗口读不到它的源码。', icon: 'warn' }) },
+      { sep: true },
+      { label: '全屏', disabled: true }
+    ],
+    3: () => [
+      { label: '野码主页', act: () => load('https://wildcode.cn/', true) },
+      { label: '时空幸存者', act: () => load('https://survivors.windcode.cn/', true) },
+      { label: '飞鸟巡游', act: () => load('https://safari.windcode.cn/', true) },
+      { label: '时空立方体', act: () => load('https://spacetime.windcode.cn/', true) },
+      { sep: true },
+      { label: '实验游戏厅', act: () => launch('hall') }
+    ],
+    4: () => [
+      { label: 'Internet 选项', disabled: true },
+      { sep: true },
+      { label: '清空历史记录', act: () => {
+          const cur = at >= 0 ? hist[at] : '';
+          hist.length = 0;
+          if (cur) { hist.push(cur); at = 0; }
+          setStatus('历史记录已清空');
+        }
+      }
+    ],
+    5: () => [
+      { label: '关于 Internet Explorer', act: () => msgBox({
+        text: 'Internet Explorer 4.0 · 野码彩蛋版\n\n这不是真的浏览器。它是画在网页里的一个窗口，内容也是从网页里嵌进来的。\n\n能用的：后退、前进、刷新、主页、地址栏、收藏里那几个站点。\n不能用的：打印、保存、选项。那些菜单项是灰的，按不动。\n\n真要上网，用你自己那个浏览器。',
+        icon: 'info'
+      }) }
+    ]
+  };
+
+  body.querySelector('.ie-menu').addEventListener('click', e => {
+    const s = e.target.closest('[data-m]');
+    if (!s) return;
+    const pt = toLogical(e.clientX, e.clientY);
+    showCtx(MENUS[+s.dataset.m](), pt.x, pt.y);
+  });
+
+  body.querySelector('.ie-bar').addEventListener('click', e => {
+    const b = e.target.closest('[data-a]');
+    if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'back') {
+      if (at > 0) { at--; load(hist[at]); } else setStatus('已经在最前面了');
+    }
+    if (a === 'fwd') {
+      if (at < hist.length - 1) { at++; load(hist[at]); } else setStatus('没有下一页了');
+    }
+    if (a === 'stop') stopLoad();
+    if (a === 'reload') { if (at >= 0) load(hist[at]); else welcome(); }
+    if (a === 'home') load(HOME, true);
+    if (a === 'go') load(addr.value, true);
+  });
+
+  addr.addEventListener('keydown', e => {
+    if (e.key === 'Enter') load(addr.value, true);
+  });
+
+  welcome();
+}
+
+/* ---------- 实验游戏厅 ---------- */
+function renderHall(body) {
+  const cats = ['全部'];
+  GAMES.forEach(g => { if (cats.indexOf(g[2]) < 0) cats.push(g[2]); });
+  let cur = '全部', kw = '', sel = null;
+
+  body.innerHTML =
+    `<div class="hall">
+       <div class="hall-side">
+         <div class="hall-sidehead">玩法</div>
+         <div id="hallCats"></div>
+       </div>
+       <div class="hall-main">
+         <div class="hall-bar">
+           <label>搜索</label>
+           <input id="hallKw" placeholder="标题，比如 潮信">
+           <button class="hall-btn" data-a="open">打开</button>
+           <button class="hall-btn" data-a="reset">全部</button>
+           <span id="hallCount" class="hall-count"></span>
+         </div>
+         <div class="hall-tablewrap">
+           <table class="hall-table">
+             <colgroup><col style="width:64px"><col><col style="width:92px"></colgroup>
+             <thead><tr><th></th><th>游戏</th><th>玩法</th></tr></thead>
+             <tbody id="hallRows"></tbody>
+           </table>
+         </div>
+         <div class="hall-foot">双击一行打开</div>
+       </div>
+     </div>`;
+
+  function paint() {
+    body.querySelector('#hallCats').innerHTML = cats.map(c => {
+      const n = c === '全部' ? GAMES.length : GAMES.filter(g => g[2] === c).length;
+      return `<div class="hall-cat${c === cur ? ' on' : ''}" data-c="${esc(c)}">${esc(c)}<span>${n}</span></div>`;
+    }).join('');
+
+    const list = GAMES.filter(g =>
+      (cur === '全部' || g[2] === cur) && (!kw || g[1].indexOf(kw) >= 0));
+
+    body.querySelector('#hallCount').textContent = list.length + ' / ' + GAMES.length;
+
+    body.querySelector('#hallRows').innerHTML = list.map(g =>
+      `<tr class="hall-row${sel === g[3] ? ' on' : ''}" data-d="${esc(g[3])}" data-t="${esc(g[1])}">
+         <td class="hall-thumb"><img src="games/covers/${esc(g[3])}.webp" alt=""></td>
+         <td class="hall-gname">${esc(g[1])}</td>
+         <td class="hall-gkind">${esc(g[2])}</td>
+       </tr>`).join('');
+  }
+
+  function openRow(dir, title) {
+    openWin({
+      id: 'g-' + dir, title: title, icon: 'hall', w: 760, h: 560,
+      status: `<span class="seg">实验原型</span><span style="margin-left:auto">games/${esc(dir)}</span>`,
+      render: b => {
+        const f = document.createElement('iframe');
+        f.src = 'games/' + dir + '/index.html';
+        f.setAttribute('allowfullscreen', '');
+        hardenFrame(f);
+        b.appendChild(f);
+      }
+    });
+  }
+
+  body.addEventListener('click', e => {
+    const cat = e.target.closest('.hall-cat');
+    if (cat) { cur = cat.dataset.c; sel = null; paint(); return; }
+
+    const btn = e.target.closest('.hall-btn');
+    if (btn) {
+      if (btn.dataset.a === 'reset') {
+        cur = '全部'; kw = ''; sel = null;
+        body.querySelector('#hallKw').value = '';
+        paint();
+      }
+      if (btn.dataset.a === 'open') {
+        if (!sel) { msgBox({ text: '先在表里选一行，再点打开。', icon: 'info' }); return; }
+        const g = GAMES.find(x => x[3] === sel);
+        if (g) openRow(g[3], g[1]);
+      }
+      return;
+    }
+
+    const row = e.target.closest('.hall-row');
+    if (row) {
+      sel = row.dataset.d;
+      body.querySelectorAll('.hall-row').forEach(r =>
+        r.classList.toggle('on', r.dataset.d === sel));
+    }
+  });
+
+  body.addEventListener('dblclick', e => {
+    const row = e.target.closest('.hall-row');
+    if (row) openRow(row.dataset.d, row.dataset.t);
+  });
+
+  body.addEventListener('input', e => {
+    if (e.target.id !== 'hallKw') return;
+    kw = e.target.value.trim();
+    paint();
+  });
+
+  paint();
+}
+
+/* ---------- 我的电脑 ---------- */
+function renderMyComp(body) {
+  body.innerHTML =
+    `<div class="explorer">
+       <div class="tree" id="mcTree">
+         <div class="node on" data-p="root">${I.computer}<span>我的电脑</span></div>
+         <div class="node" data-p="c">${I.folder}<span>C:</span></div>
+         <div class="node" data-p="d">${I.folder}<span>D: 备份2008</span></div>
+       </div>
+       <div class="list" id="mcList"></div>
+     </div>`;
+  const list = body.querySelector('#mcList');
+  const tree = body.querySelector('#mcTree');
+
+  const views = {
+    root: () => [
+      { ic: I.folder, name: '3½ 软盘 (A:)', act: () => msgBox({ text: '请将磁盘插入驱动器 A:。', icon: 'warn' }) },
+      { ic: I.computer, name: 'C:', act: () => show('c') },
+      { ic: I.folder, name: 'D: 备份2008', act: () => show('d') }
+    ],
+    c: () => [
+      { ic: I.folder, name: '野码', act: () => show('c-wild') },
+      { ic: I.folder, name: 'Program Files', act: () => msgBox({ text: 'Program Files 里装的是桌面上的那些东西。双击桌面图标就行。', icon: 'info' }) },
+      { ic: I.folder, name: 'Windows', act: () => msgBox({ text: '这是系统文件，请勿修改。', icon: 'warn' }) }
+    ],
+    'c-wild': () => [
+      { ic: I.doc, name: 'README.txt', act: () => openWin({ id:'w-readme', title:'README.txt', icon:'doc', w:540, h:520, render: b => { b.innerHTML = `<div class="pane"><pre>${esc(TEXTS.readme)}</pre></div>`; } }) },
+      { ic: I.doc, name: '守则.txt', act: () => openWin({ id:'w-rules', title:'守则.txt', icon:'doc', w:520, h:420, render: b => { b.innerHTML = `<div class="pane"><pre>${esc(TEXTS.rules)}</pre></div>`; } }) },
+      { ic: I.horse, name: '野马图鉴', act: () => launch('pets') }
+    ],
+    d: () => [
+      { ic: I.doc, name: '照片1.jpg', act: () => msgBox({ text:'文件已损坏，无法打开。', icon:'error' }) },
+      { ic: I.doc, name: '照片2.jpg', act: () => msgBox({ text:'文件已损坏，无法打开。', icon:'error' }) },
+      { ic: I.doc, name: '歌单.txt', act: () => msgBox({ text:'文件已损坏，无法打开。', icon:'error' }) }
+    ]
+  };
+
+  let cur = 'root';
+  function show(p) {
+    cur = p;
+    tree.querySelectorAll('.node').forEach(n =>
+      n.classList.toggle('on', n.dataset.p === (p.startsWith('c') ? 'c' : p)));
+    list.innerHTML = '';
+    (views[p] || views.root)().forEach(it => {
+      const d = document.createElement('div');
+      d.className = 'item';
+      d.innerHTML = `${it.ic}<div>${esc(it.name)}</div>`;
+      d.addEventListener('dblclick', it.act);
+      list.appendChild(d);
+    });
+  }
+
+  tree.addEventListener('click', e => {
+    const n = e.target.closest('.node');
+    if (n) show(n.dataset.p);
+  });
+
+  show('root');
+}
+
+/* ---------- 野马图鉴 ---------- */
+function renderPets(body) {
+  const roles = [
+    { nm:'野马',   tag:'话少，问一句答一句', on:true },
+    { nm:'小豆',   tag:'热络，爱夸人',       on:false },
+    { nm:'小C',    tag:'严谨，先说条件',     on:false },
+    { nm:'小G',    tag:'条理清楚，爱总结',   on:false },
+    { nm:'小鲸',   tag:'直接，技术流',       on:false },
+    { nm:'小星',   tag:'跳跃，容易扯远',     on:false }
+  ];
+  body.innerHTML = `<div class="petgrid">` + roles.map(r => `
+    <div class="petcard ${r.on ? '' : 'off'}">
+      <div class="nm">${r.nm}</div>
+      <div class="tag">${r.tag}</div>
+      <div class="mark">${r.on ? '桌面上的那只' : '制作中'}</div>
+    </div>`).join('') + `</div>`;
+}
+
+/* ---------- 回收站 ---------- */
+function renderBin(body) {
+  const items = ['早期扫雷.exe', '未完成的农场', '试验_03', '首页v1.html', '首页v2.html', '备用壁纸.bmp'];
+  body.innerHTML =
+    `<div class="explorer"><div class="list" style="grid-template-columns:repeat(3,1fr)" id="binList"></div></div>`;
+  const list = body.querySelector('#binList');
+  items.forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.style.opacity = '.55';
+    d.innerHTML = `${I.doc}<div>${esc(n)}</div>`;
+    d.addEventListener('dblclick', () =>
+      msgBox({ text: '该项目已永久删除，无法恢复。', icon: 'error' }));
+    list.appendChild(d);
+  });
+}
+
+/* ---------- 消息框 ---------- */
+function msgBox({ text, icon = 'info', buttons = ['确定'], onOk }) {
+  const g = document.createElement('div');
+  g.style.cssText =
+    'position:absolute;inset:0;z-index:400;display:grid;place-items:center;background:transparent';
+  const ic = icon === 'error' ? '×' : icon === 'warn' ? '!' : 'i';
+  g.innerHTML =
+    `<div style="width:320px;background:#C0C0C0;border:1px solid;border-color:#fff #000 #000 #fff;box-shadow:inset 1px 1px 0 #DFDFDF,inset -1px -1px 0 #808080,3px 3px 0 rgba(0,0,0,.3)">
+       <div class="titlebar"><div class="tt">野码</div></div>
+       <div style="display:flex;gap:10px;padding:16px 14px;align-items:flex-start">
+         <div style="width:32px;height:32px;flex:0 0 32px;border:1px solid #000;border-radius:50%;display:grid;place-items:center;font-size:18px;font-weight:bold;background:#fff">${ic}</div>
+         <div style="font-size:12px;line-height:1.6;white-space:pre-line">${esc(text)}</div>
+       </div>
+       <div style="display:flex;justify-content:flex-end;gap:6px;padding:0 12px 12px">
+         ${buttons.map(b => `<button class="dlgbtn" data-b="${esc(b)}" style="min-width:70px;height:23px;background:#C0C0C0;border:1px solid;border-color:#fff #000 #000 #fff;box-shadow:inset 1px 1px 0 #DFDFDF,inset -1px -1px 0 #808080;font-family:inherit;font-size:12px">${esc(b)}</button>`).join('')}
+       </div>
+     </div>`;
+  screenEl.appendChild(g);
+  g.addEventListener('click', e => {
+    const b = e.target.closest('.dlgbtn');
+    if (!b) return;
+    g.remove();
+    if (b.dataset.b === buttons[0] && onOk) onOk();
+  });
+}
+
+/* ---------- 开始菜单 ---------- */
+const MENU = [
+  { label:'我的电脑',  icon:'computer', act:() => launch('mycomp') },
+  { label:'野马图鉴',  icon:'horse',    act:() => launch('pets') },
+  { label:'回收站',    icon:'bin',      act:() => launch('bin') },
+  { sep:true },
+  { label:'作品',      icon:'folder',   act:() => openWin({
+      id:'w-works', title:'作品', icon:'folder', w:620, h:400,
+      status: '<span class="seg">8 个</span><span style="margin-left:auto">双击打开</span>',
+      render: b => {
+        b.innerHTML = `<div class="explorer"><div class="list" style="grid-template-columns:repeat(4,1fr)" id="wl"></div></div>`;
+        const l = b.querySelector('#wl');
+        WORKS.forEach(w => {
+          const d = document.createElement('div');
+          d.className = 'item';
+          d.innerHTML = `${I[w.key]}<div>${esc(w.name)}</div>`;
+          d.addEventListener('dblclick', () => { launch(w.key); closeWin('w-works'); });
+          l.appendChild(d);
+        });
+      }
+    }) },
+  { label:'关于野码',  icon:'doc',      act:() => launch('about') },
+  { sep:true },
+  { label:'关闭系统',  icon:'computer', act:() => confirmShutdown() }
+];
+
+function renderMenu() {
+  menuEl.innerHTML =
+    `<div class="sm-brand">W98</div>
+     <div class="sm-items">` +
+    MENU.map((m, i) =>
+      m.sep ? `<div class="mi sep"></div>`
+            : `<div class="mi" data-i="${i}">${I[m.icon] || I.doc}<span>${esc(m.label)}</span></div>`
+    ).join('') + `</div>`;
+  menuEl.querySelectorAll('.mi[data-i]').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = MENU[+el.dataset.i];
+      closeMenu();
+      m.act();
+    });
+  });
+}
+
+function openMenu() {
+  menuEl.classList.add('open');
+  startBtn.classList.add('open');
+}
+function closeMenu() {
+  menuEl.classList.remove('open');
+  startBtn.classList.remove('open');
+}
+
+startBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  menuEl.classList.contains('open') ? closeMenu() : openMenu();
+});
+
+screenEl.addEventListener('pointerdown', e => {
+  if (!e.target.closest('#startmenu') && !e.target.closest('#startbtn')) closeMenu();
+});
+
+/* ---------- 右键菜单 ---------- */
+const ctxEl = document.createElement('div');
+ctxEl.id = 'ctxmenu';
+screenEl.appendChild(ctxEl);
+
+let ctxItems = [];
+
+function showCtx(items, lx, ly) {
+  ctxItems = items;
+  ctxEl.innerHTML = items.map((it, i) =>
+    it.sep ? '<div class="sep"></div>'
+           : `<div class="ci${it.disabled ? ' dis' : ''}" data-i="${i}">${esc(it.label)}</div>`
+  ).join('');
+  ctxEl.style.display = 'block';
+  const w = ctxEl.offsetWidth;
+  const h = ctxEl.offsetHeight;
+  ctxEl.style.left = Math.max(0, Math.min(lx, 1024 - w - 2)) + 'px';
+  ctxEl.style.top  = Math.max(0, Math.min(ly, 740 - h - 2)) + 'px';
+  ctxEl.querySelectorAll('.ci').forEach(el => {
+    el.addEventListener('click', () => {
+      const it = ctxItems[+el.dataset.i];
+      hideCtx();
+      if (it && it.act) it.act();
+    });
+  });
+}
+
+function hideCtx() {
+  ctxEl.style.display = 'none';
+  ctxEl.innerHTML = '';
+  ctxItems = [];
+}
+
+document.getElementById('viewport')
+  .addEventListener('contextmenu', e => e.preventDefault());
+
+screenEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const pt = toLogical(e.clientX, e.clientY);
+  const t = e.target;
+  closeMenu();
+
+  /* 桌面图标 */
+  const ic = t.closest('.icon');
+  if (ic) {
+    selectIcon(ic);
+    const it = DESKTOP.find(d => d.id === ic.dataset.id);
+    const work = WORKS.find(w => w.key === it.id);
+    showCtx([
+      { label: '打开', act: () => launch(it.id) },
+      { label: '在浏览器里打开', disabled: !work, act: () => window.open(work.url, '_blank', 'noopener') },
+      { sep: true },
+      { label: '属性', act: () => iconProps(it, work) }
+    ], pt.x, pt.y);
+    return;
+  }
+
+  /* 窗口标题栏 */
+  const tb = t.closest('.titlebar');
+  if (tb) {
+    const w = [...WINS.values()].find(x => x.el.contains(tb));
+    if (w) {
+      focusWin(w.id);
+      showCtx([
+        { label: '还原',   disabled: w.state !== 'max', act: () => { restoreWin(w.id); syncTasks(); } },
+        { label: '最小化', act: () => { minWin(w.id); syncTasks(); } },
+        { label: '最大化', disabled: w.state === 'max', act: () => { maxWin(w.id); syncTasks(); } },
+        { sep: true },
+        { label: '关闭',   act: () => closeWin(w.id) }
+      ], pt.x, pt.y);
+      return;
+    }
+  }
+
+  /* 任务栏按钮 */
+  const taskBtn = t.closest('.taskbtn');
+  if (taskBtn) {
+    const w = WINS.get(taskBtn.dataset.id);
+    if (w) {
+      showCtx([
+        { label: '还原', act: () => {
+            if (w.state === 'min') { w.state = 'normal'; w.el.style.display = ''; }
+            focusWin(w.id); syncTasks();
+          } },
+        { label: '最小化', disabled: w.state === 'min', act: () => { minWin(w.id); syncTasks(); } },
+        { label: '关闭',   act: () => closeWin(w.id) }
+      ], pt.x, pt.y);
+    }
+    return;
+  }
+
+  /* 任务栏空白 */
+  if (t.closest('#taskbar')) {
+    showCtx([
+      { label: '层叠窗口',       disabled: WINS.size < 2, act: cascadeWins },
+      { label: '最小化所有窗口', disabled: WINS.size === 0, act: () => { [...WINS.keys()].forEach(minWin); syncTasks(); } }
+    ], pt.x, pt.y);
+    return;
+  }
+
+  /* 窗口内容区交给应用自己 */
+  if (t.closest('.win')) { hideCtx(); return; }
+
+  /* 桌面空白 */
+  showCtx([
+    { label: '刷新', disabled: false, act: () => {
+        renderDesktop();
+        if (selIcon) selIcon = null;
+      } },
+    { label: '层叠窗口', disabled: WINS.size < 2, act: cascadeWins },
+    { sep: true },
+    { label: '关于这台电脑', act: () => launch('about') }
+  ], pt.x, pt.y);
+});
+
+screenEl.addEventListener('pointerdown', e => {
+  if (!e.target.closest('#ctxmenu')) hideCtx();
+});
+
+function cascadeWins() {
+  let i = 0;
+  [...WINS.values()].forEach(w => {
+    if (w.state === 'max') restoreWin(w.id);
+    const ww = w.el.offsetWidth  || w.spec.w || 640;
+    const hh = w.el.offsetHeight || w.spec.h || 460;
+    w.state = 'normal';
+    w.el.style.display = '';
+    w.el.style.left = Math.max(8, Math.min(120 + i * 24, 1024 - ww - 8)) + 'px';
+    w.el.style.top  = Math.max(8, Math.min(70  + i * 24, 740  - hh - 8)) + 'px';
+    focusWin(w.id);
+    i++;
+  });
+  syncTasks();
+}
+
+function iconProps(it, work) {
+  const lines = work
+    ? [
+        `名称　${it.label}`,
+        `全名　${work.full}`,
+        `类型　${work.type}`,
+        `地址　${work.url}`,
+        ``,
+        work.desc
+      ]
+    : [`名称　${it.label}`, `类型　系统`, `位置　桌面`];
+  msgBox({ text: lines.join('\n'), icon: 'info' });
+}
+
+/* ---------- 关机 ---------- */
+function confirmShutdown() {
+  msgBox({
+    text: '您确定要关闭计算机吗？',
+    icon: 'warn',
+    buttons: ['是', '否'],
+    onOk: shutdown
+  });
+}
+
+function shutdown() {
+  const g = document.createElement('div');
+  g.style.cssText =
+    'position:absolute;inset:0;z-index:500;background:#000;display:grid;place-items:center;cursor:pointer';
+  g.innerHTML =
+    `<div style="text-align:center">
+       <div style="color:#FF6A3D;font-size:15px;letter-spacing:1px">现在可以安全地关闭计算机了。</div>
+       <div style="color:#5b5b5b;font-size:11px;margin-top:18px" id="rebootHint">（点击屏幕重新开机）</div>
+     </div>`;
+  screenEl.appendChild(g);
+  const hint = g.querySelector('#rebootHint');
+  hint.style.opacity = '0';
+  hint.style.transition = 'opacity .6s';
+  setTimeout(() => { hint.style.opacity = '1'; }, 1600);
+  g.addEventListener('click', () => {
+    g.remove();
+    [...WINS.keys()].forEach(closeWin);
+    cascade = 0;
+    if (selIcon) { selIcon.classList.remove('sel'); selIcon = null; }
+  });
+}
+
+/* ---------- 时钟 ---------- */
+function tick() {
+  const now = new Date();
+  clockEl.textContent =
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0');
+}
+tick();
+setInterval(tick, 30000);
+
+/* ---------- 启动 ---------- */
+renderDesktop();
+renderMenu();
+fillMobile();
+
+function fillMobile() {
+  const m = document.getElementById('mobile');
+  if (!m) return;
+  m.innerHTML =
+    `<div class="wrap">
+       <div class="kicker">WILD CODE</div>
+       <h1>这台电脑在桌面端</h1>
+       <p class="sub">野码的首页是一台旧电脑：桌面上摆着八个能开的东西，四十个实验原型在里面。
+          它按 1024×768 画的，手机上没有对应的样子，就给你一份清单。</p>
+
+       <div class="sec">八个作品</div>
+       ${WORKS.map(w => `
+         <a class="m-item" href="${w.url}" target="_blank" rel="noopener">
+           <div><span class="n">${esc(w.name)}</span><span class="t">${esc(w.type)}</span></div>
+           <div class="d">${esc(w.desc)}</div>
+         </a>`).join('')}
+
+       <div class="m-foot">
+         <b>四十个实验原型</b>还没在这儿列出来，要等桌面版做完。<br>
+         急着看的话，用电脑打开这个地址。<br><br>
+         wildcode.cn 是我的个人站。
+       </div>
+     </div>`;
+}
+
+})();
+</script>
+</body>
+</html>
