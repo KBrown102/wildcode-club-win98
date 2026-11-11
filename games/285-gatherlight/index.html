@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="QCwQzP5cv7PEO4Lix9VxYm">
+<head data-page-node-id="VfixbUsQ680hAWNRcLmfju"><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8" data-page-node-id="bDwaomGfaZI8Z6kHtBkcRs">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" data-page-node-id="88HEUNFDuC4Ux0OEEOIXCu">
+<meta name="theme-color" content="#071522" data-page-node-id="zNNLNXxzclmNPbOvf6TEZG">
+<title>引灯 · 洄游夜</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #05090F;
+    font-family: "KaiTi","STKaiti","PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif;
+    color: #C7D5DE;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 480px; height: 900px;
+    transform-origin: 50% 50%;
+    transform: translate(-50%,-50%);
+    background: #071522;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 20px 70px rgba(0,0,0,0.7);
+  }
+  #cv { display: block; width: 480px; height: 900px; position: absolute; left: 0; top: 0; }
+
+  /* ---------- 顶部信息 ---------- */
+  #hud {
+    position: absolute; left: 0; top: 0; width: 480px; height: 168px;
+    pointer-events: none; z-index: 3;
+    padding: 14px 20px 0;
+  }
+  .hrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .hbrand { font-size: 25px; font-weight: 700; letter-spacing: 5px; color: #F5E3C0;
+            text-shadow: 0 0 22px rgba(245,200,122,0.30); }
+  .hbrand small { font-size: 12.5px; letter-spacing: 3px; color: #6E8593; margin-left: 9px; font-weight: 400; }
+  .hlv { font-size: 12.5px; color: #7E96A6; letter-spacing: 2.4px; }
+  .chips { display: flex; gap: 8px; margin-top: 13px; }
+  .chip {
+    flex: 1; background: rgba(127,216,200,0.045);
+    border: 1px solid rgba(127,216,200,0.13);
+    border-radius: 10px; padding: 5px 0 4px; text-align: center;
+  }
+  .chip .k { font-size: 10px; color: #6E8593; letter-spacing: 2px; display: block; }
+  .chip .v { font-size: 18px; font-weight: 700; color: #DCE8EE; letter-spacing: 0.5px; }
+  .chip.got .v { color: #7FD8C8; }
+  .chip.pow .v { color: #F5D08A; }
+  .chip.combo .v { color: #E8A87C; }
+  .chip.score .v { color: #F5E3C0; }
+
+  #ebar {
+    margin-top: 9px; height: 5px; border-radius: 3px;
+    background: rgba(127,216,200,0.10); overflow: hidden;
+  }
+  #ebar i { display: block; height: 100%; width: 100%; border-radius: 3px;
+            background: linear-gradient(90deg,#C98A4B,#F5D08A); transition: width 80ms linear; }
+  #ebar.low i { background: linear-gradient(90deg,#6E4A34,#A87A4A); }
+  #ebar.rest i { background: linear-gradient(90deg,#3A4A55,#6E8593); }
+
+  #tip { margin-top: 8px; font-size: 11.5px; color: #5E7383; letter-spacing: 1.3px; text-align: center; }
+  #tip b { color: #93AEBE; font-weight: 600; }
+
+  /* ---------- 底部条 ---------- */
+  #bar {
+    position: absolute; left: 0; bottom: 0; width: 480px; height: 74px;
+    z-index: 30; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px 8px; pointer-events: none;
+  }
+  #bar button { pointer-events: auto; }
+  .bbtn {
+    font-family: inherit; font-size: 13px; color: #BFCFD9;
+    background: rgba(12,20,28,0.62); border: 1px solid rgba(127,216,200,0.18);
+    border-radius: 9px; padding: 8px 14px; margin-left: 8px; cursor: pointer;
+    letter-spacing: 1.4px;
+  }
+  .bbtn:active { background: rgba(127,216,200,0.20); transform: translateY(1px); }
+  #btnFocus {
+    font-family: inherit; font-size: 17px; font-weight: 700; letter-spacing: 5px;
+    color: #2A1D0C; background: linear-gradient(180deg,#F5D08A,#D8A45E);
+    border: none; border-radius: 13px; padding: 15px 34px; cursor: pointer;
+    box-shadow: 0 6px 22px rgba(245,200,122,0.28);
+  }
+  #btnFocus.on { background: linear-gradient(180deg,#FFE9BE,#F5C87A); box-shadow: 0 0 26px rgba(255,233,190,0.55); }
+  #btnFocus:active { transform: translateY(1px); }
+
+  /* ---------- 遮罩 ---------- */
+  .ov {
+    position: absolute; left: 0; top: 0; width: 480px; height: 900px;
+    z-index: 20; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(6,12,20,0.94);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    padding: 0 42px; text-align: center;
+  }
+  .ov.hide { display: none; }
+  .ov h1 { font-size: 42px; letter-spacing: 12px; margin: 0 0 6px; color: #F5D08A; font-weight: 700;
+           text-shadow: 0 0 36px rgba(245,208,138,0.32); }
+  .ov h2 { font-size: 15px; letter-spacing: 6px; margin: 0 0 26px; color: #7E96A6; font-weight: 400; }
+  .ov p { font-size: 14.5px; line-height: 2.1; color: #9FB3C0; margin: 0 0 8px; letter-spacing: 0.8px; }
+  .ov p .em { color: #F5D08A; }
+  .ov p .gl { color: #7FD8C8; }
+  .ov p .dim { color: #6E8593; }
+  .big {
+    font-family: inherit; font-size: 19px; letter-spacing: 6px; color: #1A1206;
+    background: linear-gradient(180deg,#F5D08A,#D8A45E); border: none; border-radius: 11px;
+    padding: 14px 46px; margin-top: 24px; cursor: pointer;
+    box-shadow: 0 8px 28px rgba(245,200,122,0.26);
+  }
+  .big:active { transform: translateY(1px); }
+  .ghost {
+    font-family: inherit; font-size: 14px; letter-spacing: 3px; color: #8FA5B3;
+    background: transparent; border: 1px solid rgba(127,216,200,0.20); border-radius: 10px;
+    padding: 10px 26px; margin-top: 12px; cursor: pointer;
+  }
+  .keys { margin-top: 18px; font-size: 12px; color: #6E8593; letter-spacing: 1.1px; line-height: 1.95; }
+  .keys b { color: #9FB8C7; font-weight: 600; }
+  .tbl { width: 312px; margin: 4px 0 6px; }
+  .tbl .tr { display: flex; justify-content: space-between; padding: 6px 2px;
+             border-bottom: 1px dashed rgba(127,216,200,0.14); font-size: 14px; }
+  .tbl .tr:last-child { border-bottom: none; }
+  .tbl .tr .k { color: #7E96A6; letter-spacing: 2px; }
+  .tbl .tr .v { color: #DCE8EE; font-weight: 700; }
+  .tbl .tr .v.m { color: #F5D08A; }
+  .tbl .tr .v.f { color: #7FD8C8; }
+  .line { font-size: 14.5px; color: #8FA5B3; letter-spacing: 1.8px; margin-top: 20px; font-style: italic; }
+  .best { font-size: 12px; color: #5E7383; letter-spacing: 2px; margin-top: 14px; }
+  .stars { font-size: 26px; letter-spacing: 9px; color: #F5D08A; margin-bottom: 4px; height: 32px; }
+  .stars .off { color: #26313A; }
+</style>
+</head>
+<body data-page-node-id="htZxAxlNPOsvZhk4qjnpDM">
+<div id="stage" data-page-node-id="XOk2Rngv6OdQgwlQMgiLfk">
+  <canvas id="cv" width="480" height="900" data-page-node-id="Kinea6C1M6irYagyhn5hmd"></canvas>
+
+  <div id="hud" data-page-node-id="AchlA4HjOqCSf74zSp8SNu">
+    <div class="hrow" data-page-node-id="mrfgPHeaMNPKa8LTF4Gamv">
+      <div class="hbrand" data-page-node-id="UA8CVljtoWkk66T4P2sFzw">引灯<small data-page-node-id="dDZf5fgfP282d9pKZ4jxHN">洄游夜</small></div>
+      <div class="hlv" data-page-node-id="94jMDqVwQfn9UMpTmgw9zH">第 <span id="lv" data-page-node-id="PUeCcLwaUbyzyD1PzQiHX1">1</span> 波 · 共 5 波</div>
+    </div>
+    <div class="chips" data-page-node-id="hBH5mnSf11Bd4TJSltLCZE">
+      <div class="chip got" data-page-node-id="sPQIWfDBtGlY8tB2c0Ey2I"><span class="k" data-page-node-id="fECLtGxHi7DDq10aOQy3Te">接回</span><span class="v" id="vGot" data-page-node-id="AlW30QpTUdalUQOlr074by">0</span></div>
+      <div class="chip pow" data-page-node-id="qfoMgj8DLdeR2jJuXxxPGD"><span class="k" data-page-node-id="BH1JCCQYMInxDLLouYqXfI">光能</span><span class="v" id="vPow" data-page-node-id="XSPx7avc5ndOIPKhIOHy2s">100</span></div>
+      <div class="chip combo" data-page-node-id="CaSRlIZDKjbP7dbc1MDETS"><span class="k" data-page-node-id="9P5mGfI9KpwO0HeZYOSSBk">连击</span><span class="v" id="vCombo" data-page-node-id="FCg5nah3SWQtJ7QvKDXqv2">×0</span></div>
+      <div class="chip score" data-page-node-id="RTBUJhwl4MIPXARWbmp45v"><span class="k" data-page-node-id="2GQzRK6FWF8szLT7YD3Egu">得分</span><span class="v" id="vScore" data-page-node-id="ELNGSI8W2BggUM0v6Nu60B">0</span></div>
+    </div>
+    <div id="ebar" data-page-node-id="vSskWZ8QVTLZkKqsLtnm4r"><i id="ebarI" data-page-node-id="NtLJWgM4K2PpfV814lR1Sw"></i></div>
+    <div id="tip" data-page-node-id="M8ZGepfLspVQKUreRNQfJH">拖动 / 移动鼠标 <b data-page-node-id="ZoTZp7NSRr8MCphK4zZN2K">转向</b>　·　按住 <b data-page-node-id="vKhG97owl7mX45HsayFhHA">聚光</b> 收网　·　<b data-page-node-id="Sxrb4SRCVy4tAWOjJGpEOy">A D</b> / <b data-page-node-id="KxZkpMP8x9gQV4KuVjBBiB">← →</b> 转向　<b data-page-node-id="uYVOroEyYAM7gAiSROHYeI">空格</b> 聚光</div>
+  </div>
+
+  <!-- 开场 -->
+  <div class="ov" id="ovStart" data-page-node-id="BD1VoKFJ2BBoQexddHzRem">
+    <h1 data-page-node-id="kwHNayOzCXDbA67c9UtTE8">引灯</h1>
+    <h2 data-page-node-id="8BBBGhbh9KdgCNvH2hFI7R">洄 游 夜</h2>
+    <p data-page-node-id="fUDG8gRJY9Pf2dyzC8MzAp">深海三千米，只有你这一间还亮着灯。<br data-page-node-id="NdUsCcS4ETDt9RSaAqtMw0">
+       大半片海是黑的，客人只是水里几粒将熄的磷火。<br data-page-node-id="pJFcsvA3qI7GYt2LAIvAKA">
+       你手里那束光可以转 —— <span class="em" data-page-node-id="a193Y8Jl8eGqxE6z0jbEzg">拖动它，扫过去</span>。<br data-page-node-id="7kA6Sr6YFNUbdXdfHL3qtY">
+       散光是<span class="gl" data-page-node-id="faimCBX4fi55ZvAL6qwos6">免费的</span>：它把散着的客人一点点<span class="em" data-page-node-id="9qAyzh6VfobkT8afvCTu91">拢到一条线上</span>，<br data-page-node-id="VbjtiicRdqXlSxcMwhxKks">
+       <span class="dim" data-page-node-id="eVgWugQuqSP78VfXu07fQr">但它拖不动人。</span><br data-page-node-id="3ERZMEJrw2GTDsSolOQaHY">
+       想真的把人带回家，得<span class="em" data-page-node-id="wqT5ky22sSJXurhY9FDwwy">按住聚光</span> —— 更窄、更远、力大，<br data-page-node-id="yD6tMdtDG77oM7LRGrFxNp">
+       代价是<span class="dim" data-page-node-id="mRRIYXw5NylfVgC3DfofjO">烧光能</span>；光能见底，灯要喘一口气。<br data-page-node-id="DADWAy74a5Ku4Oy5IqGjo5">
+       <span class="dim" data-page-node-id="NaCsePaU5uFnXcbhxmAcwk">别在聚光时把客人撞上礁石 —— 那一下的光，算你的。</span><br data-page-node-id="KXGPjChixXeeZxis5Wq3Ab">
+       光扫过的地方会留下<span class="gl" data-page-node-id="DvfFK30cHf8PH1RFWlW6ju">余温</span>，照到过的礁石从此记在心里。<br data-page-node-id="mqKLFjMbm27DPHj8wCSkbM">
+       所以<span class="dim" data-page-node-id="EXpzkt8gGw25CJNnpoXdgQ">空扫不白费</span> —— 你只是把这片海看清了一点。</p>
+    <div class="keys" data-page-node-id="e1bBpLjpQPI3esNsSFKVgJ">键盘　<b data-page-node-id="d3jBCla3GdGQPHhGsPKtOE">A D</b> / <b data-page-node-id="QIxg9cNcCQtUlLCFUlfBEk">← →</b> 转向　·　<b data-page-node-id="DooCbxMiN2KU4C3qS0m10s">W S</b> / <b data-page-node-id="YidevMszDzGIkgtL9RS71x">↑ ↓</b> 粗转　·　<b data-page-node-id="A1VqePGWFOHbdDAggU4nOL">空格</b> 按住聚光　·　<b data-page-node-id="OMXlKnUPB0U49oD8TNvnpX">M</b> 静音　·　<b data-page-node-id="MwgXmc4OVYjhMaeWSsmPd3">R</b> 重开</div>
+    <button class="big" id="btnStart" data-page-node-id="woFNPEmvGMWGpx6SDfIxqq">点　灯</button>
+    <div class="best" id="bestStart" data-page-node-id="p6AzUitOM5lYUZrBv6yZvI"></div>
+  </div>
+
+  <!-- 结算 -->
+  <div class="ov hide" id="ovEnd" data-page-node-id="DMBTBZHGwrydU8ne0FqI7F">
+    <div class="stars" id="eStars" data-page-node-id="IaRNj1MRwVOrb7dKY5vj1x"></div>
+    <h2 style="font-size:19px;letter-spacing:6px;margin:0 0 20px" id="eTitle" data-page-node-id="YtoCRSshU5Lqb84mXKpAz4">打 烊 了</h2>
+    <div class="tbl" data-page-node-id="JpSQsGwCvG0IbGqKR9IDh3">
+      <div class="tr" data-page-node-id="vGUtqOpLwVZj6nSd40AaUl"><span class="k" data-page-node-id="NtkAXQb5tRBESZignD4OKD">接回</span><span class="v m" id="eGot" data-page-node-id="OqBejmDFN2VU4y2CRdGr3k">0 / 34</span></div>
+      <div class="tr" data-page-node-id="1sY9XD2gTy0M4F2rL3dv94"><span class="k" data-page-node-id="BsaGIHTYFdOBB0i7n6NqYx">游走</span><span class="v" id="eLost" data-page-node-id="IIZqCLRe4wnfzR6qGy93Hm">0 位</span></div>
+      <div class="tr" data-page-node-id="zmCNI2JakfNCAlwUvdJAvN"><span class="k" data-page-node-id="Xj6IKmMtpnICHaPg7AVyxR">最长连击</span><span class="v f" id="eCombo" data-page-node-id="UzHx2Z1AxDsvjMVZagzZET">×0</span></div>
+      <div class="tr" data-page-node-id="xWzfRjGa57pbmEd8kf6y3t"><span class="k" data-page-node-id="5c0Jiez23jbsoW0nlxkeeE">灯亮到</span><span class="v" id="eLight" data-page-node-id="5r9MmAmz4qdWA8hEvMkepu">0 级</span></div>
+      <div class="tr" data-page-node-id="Z1l6IR2Txi1pAo1vh07mbw"><span class="k" data-page-node-id="ZQyB2bE7UypqTPftaJhl5P">余光能</span><span class="v m" id="eBonus" data-page-node-id="ewpkgslpnBgadjCKJHKD4D">+0</span></div>
+      <div class="tr" data-page-node-id="Rl1Fhf0h7i3wjO6NyZtdVE"><span class="k" data-page-node-id="ETXyFaogFzA8Cn5cpzLANa">今夜得分</span><span class="v" id="eScore" data-page-node-id="TfrfAo5lHMPcJ4OuWPM6il">0</span></div>
+    </div>
+    <div class="line" id="eLine" data-page-node-id="Wc0kGFSskYDCOoeFc18Xwf"></div>
+    <button class="big" id="btnAgain" data-page-node-id="xbdaTqlTVxIDW396LkmCBW">再 开 一 夜</button>
+    <div class="best" id="bestEnd" data-page-node-id="5w4jmUUFmiFEJRthGGFeCH"></div>
+  </div>
+
+  <!-- 常驻按钮（放在遮罩之后，避免被挡住点不到） -->
+  <div id="bar" data-page-node-id="lRwDcmRHxYcBetAQTOBd9k">
+    <div data-page-node-id="7Kh5uFbBjRXW1wEUIdYVFD">
+      <button class="bbtn" id="btnMute" data-page-node-id="7nBoffHUHPo941jMUutAzi">♪ 开</button>
+      <button class="bbtn" id="btnRetry" data-page-node-id="3LNb7H1qIbFraauKxt9TWq">重开</button>
+    </div>
+    <button id="btnFocus" data-page-node-id="cwrD6QJ9cj3tCFBvRQFtZ5">聚　光</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.Gather, R = window.GatherRender;
+  var W = G.W, H = G.H;
+
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+
+  function $(id) { return document.getElementById(id); }
+  var el = {
+    lv: $('lv'), got: $('vGot'), pow: $('vPow'), combo: $('vCombo'), score: $('vScore'),
+    ebar: $('ebar'), ebarI: $('ebarI'),
+    ovStart: $('ovStart'), ovEnd: $('ovEnd'),
+    eStars: $('eStars'), eTitle: $('eTitle'), eGot: $('eGot'), eLost: $('eLost'),
+    eCombo: $('eCombo'), eLight: $('eLight'), eBonus: $('eBonus'), eScore: $('eScore'),
+    eLine: $('eLine'), bestStart: $('bestStart'), bestEnd: $('bestEnd'),
+    btnFocus: $('btnFocus')
+  };
+
+  // ---------- 自适应：canvas CSS 固定逻辑尺寸，只缩放 #stage ----------
+  var K = 1;
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    K = Math.min(vw / W, vh / H);
+    if (!isFinite(K) || K <= 0) K = 1;
+    stage.style.transform = 'translate(-50%,-50%) scale(' + K + ')';
+    var dpr = window.devicePixelRatio || 1;
+    var eff = Math.min(dpr * K, 2.4);
+    if (eff < 1) eff = 1;
+    var bw = Math.round(W * eff), bh = Math.round(H * eff);
+    if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.setTransform(eff, 0, 0, eff, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    R.setDPR(eff);      // 精灵随 dpr 重建，保持清晰
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+
+  // ---------- 音 ----------
+  var AC = null, MASTER = null, muted = false, DRONE = null, DRONE_G = null;
+  try { muted = localStorage.getItem('gatherlight_mute') === '1'; } catch (e) { }
+  function ac() {
+    if (AC) return AC;
+    try {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!AC && Ctor) {
+        AC = new Ctor();
+        MASTER = AC.createGain();
+        MASTER.gain.value = muted ? 0 : 0.5;
+        MASTER.connect(AC.destination);
+      }
+    } catch (e) { AC = null; }
+    return AC;
+  }
+  function resume() { var a = ac(); if (a && a.state === 'suspended') a.resume(); }
+  function tone(freq, dur, type, vol, delay, glide) {
+    var a = ac(); if (!a || muted) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * glide), t0 + dur);
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.014);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(gn); gn.connect(MASTER);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  var NB = null;
+  function noiseBuf() {
+    var a = ac(); if (!a) return null;
+    if (NB) return NB;
+    var n = Math.floor(a.sampleRate * 0.6);
+    NB = a.createBuffer(1, n, a.sampleRate);
+    var ch = NB.getChannelData(0);
+    for (var i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+    return NB;
+  }
+  function noise(dur, vol, freq, delay, q, type) {
+    var a = ac(); if (!a || muted) return;
+    var b = noiseBuf(); if (!b) return;
+    var t0 = a.currentTime + (delay || 0);
+    var s = a.createBufferSource(); s.buffer = b;
+    var f = a.createBiquadFilter();
+    f.type = type || 'bandpass'; f.frequency.value = freq || 900; f.Q.value = q || 1.1;
+    var gn = a.createGain();
+    gn.gain.setValueAtTime(0.0001, t0);
+    gn.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    s.connect(f); f.connect(gn); gn.connect(MASTER);
+    s.start(t0); s.stop(t0 + dur + 0.03);
+  }
+
+  var PENTA = G.PENTA;
+  // 店里越来越热闹：接回的每一位都多叠一个声部（Lo-Fi 房间感）
+  function sfxDeliver(freq, combo, seats) {
+    var layers = Math.min(4, 1 + Math.floor(seats / 3));
+    for (var i = 0; i < layers; i++) {
+      var f = PENTA[(i * 2 + combo - 1) % 5] * (i >= 2 ? 2 : 1);
+      tone(f, 1.5 - i * 0.15, 'sine', 0.16 - i * 0.026, i * 0.045);
+    }
+    tone(freq * 2, 0.5, 'sine', 0.055, 0.02);
+    noise(0.10, 0.030, 520, 0, 0.8, 'lowpass');   // 水声
+  }
+  function sfxBump() {
+    tone(126, 0.24, 'sine', 0.075, 0, 0.42);
+    noise(0.07, 0.045, 420, 0, 1.0, 'lowpass');
+  }
+  function sfxLeave() { tone(300, 0.7, 'sine', 0.05, 0, 0.45); }
+  function sfxWave(n) {
+    tone(PENTA[0] * 2, 0.5, 'sine', 0.10, 0);
+    tone(PENTA[2] * 2, 0.6, 'sine', 0.09, 0.11);
+  }
+  function sfxExhaust() { tone(180, 0.55, 'sine', 0.06, 0, 0.55); noise(0.30, 0.025, 300, 0, 0.7, 'lowpass'); }
+  function sfxPerfect() {
+    for (var i = 0; i < 5; i++) tone(PENTA[i] * 2, 1.3, 'sine', 0.12, i * 0.085);
+  }
+  function sfxOver(stars) {
+    var seq = stars >= 2 ? [0, 1, 2, 3, 4] : [4, 2, 1, 0];
+    for (var i = 0; i < seq.length; i++) tone(PENTA[seq[i]], 1.4, 'sine', 0.13, i * 0.15);
+    tone(PENTA[0] / 2, 2.4, 'sine', 0.07, 0.4);
+  }
+  // 房间低频垫：第一位客人坐下后起，人越多越厚
+  function drone(seats) {
+    var a = ac(); if (!a || muted) return;
+    if (!DRONE) {
+      DRONE_G = a.createGain();
+      DRONE_G.gain.value = 0.0001;
+      DRONE_G.connect(MASTER);
+      DRONE = [];
+      [65.41, 98.00].forEach(function (f, i) {
+        var o = a.createOscillator();
+        o.type = 'sine'; o.frequency.value = f;
+        var g = a.createGain(); g.gain.value = i ? 0.35 : 1;
+        o.connect(g); g.connect(DRONE_G); o.start();
+        DRONE.push(o);
+      });
+    }
+    var target = Math.min(0.030, 0.006 + seats * 0.0022);
+    try { DRONE_G.gain.setTargetAtTime(target, a.currentTime, 1.2); } catch (e) { DRONE_G.gain.value = target; }
+  }
+
+  // ---------- 最佳记录 ----------
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('gatherlight_best_v1') || '0', 10) || 0; } catch (e) { }
+  function saveBest(v) {
+    if (v > best) { best = v; try { localStorage.setItem('gatherlight_best_v1', String(v)); } catch (e) { } }
+  }
+  function bestTxt() { return best > 0 ? '历来最高一夜 · ' + best + ' 分' : ''; }
+
+  // ---------- 局面 ----------
+  var st = null, mode = 'ready';
+
+  var LINES = [
+    '你没法把所有的光都带回家。',
+    '灯还亮着，明天还会有人来。',
+    '没接到的那些，海替你记着。',
+    '一整夜，你只是把光举了一会儿。',
+    '水一直在动，你也在。',
+    '打烊了。剩下的海，还是黑的。'
+  ];
+
+  function newGame() {
+    st = G.create(((Date.now() >>> 0) ^ (Math.random() * 0xffffffff >>> 0)) >>> 0);
+    R.reset(st);
+    mode = 'playing';
+    el.ovStart.classList.add('hide');
+    el.ovEnd.classList.add('hide');
+    el.lv.textContent = 1;
+    if (DRONE_G) { try { DRONE_G.gain.setTargetAtTime(0.0001, ac().currentTime, 0.4); } catch (e) { } }
+    syncHUD();
+    resume();
+  }
+
+  function syncHUD() {
+    if (!st) return;
+    var s = G.stats(st);
+    el.got.textContent = s.delivered;
+    el.pow.textContent = s.energy;
+    el.combo.textContent = '×' + s.combo;
+    el.score.textContent = s.score;
+    el.lv.textContent = s.wave;
+    el.ebarI.style.width = s.energy + '%';
+    el.ebar.className = s.rest ? 'rest' : (s.energy < 30 ? 'low' : '');
+    el.btnFocus.classList.toggle('on', !!s.focus);
+  }
+
+  function finish() {
+    var s = G.stats(st), r = s.result;
+    mode = 'over';
+    var stars = '';
+    for (var i = 0; i < 3; i++) stars += (i < r.stars ? '★' : '<span class="off">★</span>');
+    el.eStars.innerHTML = stars;
+    el.eTitle.textContent = r.stars >= 3 ? '满 堂' : (r.stars >= 1 ? '打 烊 了' : '灯 还 亮 着');
+    el.eGot.textContent = r.delivered + ' / ' + r.total;
+    el.eLost.textContent = r.lost + ' 位';
+    el.eCombo.textContent = '×' + Math.max(1, r.bestCombo);
+    el.eLight.textContent = st.seats.length + ' 位 / ' + Math.round((s.home - G.HOME_R0) / 3.2) + ' 级';
+    el.eBonus.textContent = '+' + r.energyBonus;
+    el.eScore.textContent = r.score;
+    el.eLine.textContent = LINES[Math.floor(Math.random() * LINES.length)];
+    saveBest(r.score);
+    el.bestEnd.textContent = bestTxt();
+    el.bestStart.textContent = bestTxt();
+    el.ovEnd.classList.remove('hide');
+    sfxOver(r.stars);
+  }
+
+  // ---------- 输入 ----------
+  function pos(e) {
+    var b = cv.getBoundingClientRect();
+    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return {
+      x: (t.clientX - b.left) / (b.width / W),
+      y: (t.clientY - b.top) / (b.height / H)
+    };
+  }
+  var down = false, holdT = 0, downX = 0, downY = 0, moved = 0, holdTimer = null;
+  var HOLD_MS = 180, MOVE_TOL = 14;
+
+  function startHold() {
+    if (holdTimer) clearTimeout(holdTimer);
+    holdTimer = setTimeout(function () {
+      if (down && moved < MOVE_TOL && st && mode === 'playing') G.setFocus(st, true);
+    }, HOLD_MS);
+  }
+  function endHold() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    if (st) G.setFocus(st, false);
+  }
+  function aim(e) {
+    if (!st || mode !== 'playing') return;
+    var p = pos(e);
+    G.aimAt(st, p.x, p.y);
+  }
+  function onDown(e) {
+    if (mode !== 'playing' || !st) return;
+    resume();
+    down = true; moved = 0;
+    var p = pos(e); downX = p.x; downY = p.y;
+    aim(e);
+    startHold();
+    if (e.preventDefault) e.preventDefault();
+  }
+  function onMove(e) {
+    if (mode !== 'playing' || !st) return;
+    if (down) {
+      var p = pos(e);
+      moved = Math.max(moved, Math.hypot(p.x - downX, p.y - downY));
+    }
+    aim(e);
+    if (e.preventDefault && down) e.preventDefault();
+  }
+  function onUp() { down = false; endHold(); }
+
+  if (window.PointerEvent) {
+    cv.addEventListener('pointerdown', onDown, { passive: false });
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  } else {
+    cv.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    cv.addEventListener('touchstart', onDown, { passive: false });
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  }
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // 底部「聚光」按钮：按住即聚光（移动端主力）
+  (function () {
+    var b = el.btnFocus;
+    function on(e) { resume(); if (st && mode === 'playing') G.setFocus(st, true); if (e.preventDefault) e.preventDefault(); }
+    function off(e) { if (st) G.setFocus(st, false); if (e && e.preventDefault) e.preventDefault(); }
+    if (window.PointerEvent) {
+      b.addEventListener('pointerdown', on, { passive: false });
+      b.addEventListener('pointerup', off, { passive: false });
+      b.addEventListener('pointerleave', off);
+      b.addEventListener('pointercancel', off);
+    } else {
+      b.addEventListener('touchstart', on, { passive: false });
+      b.addEventListener('touchend', off, { passive: false });
+      b.addEventListener('mousedown', on);
+      b.addEventListener('mouseup', off);
+      b.addEventListener('mouseleave', off);
+    }
+  })();
+
+  // 键盘 —— 纪律：WASD 与方向键完全等同（A=← D=→ W=↑ S=↓）
+  var DEG = Math.PI / 180;
+  function keyOf(e) {
+    var c = e.code || '', k = (e.key || '').toLowerCase();
+    return {
+      left: c === 'ArrowLeft' || c === 'KeyA' || k === 'arrowleft' || k === 'a',
+      right: c === 'ArrowRight' || c === 'KeyD' || k === 'arrowright' || k === 'd',
+      up: c === 'ArrowUp' || c === 'KeyW' || k === 'arrowup' || k === 'w',
+      down: c === 'ArrowDown' || c === 'KeyS' || k === 'arrowdown' || k === 's',
+      focus: k === ' ' || c === 'Space',
+      fire: k === ' ' || c === 'Space' || k === 'enter' || c === 'Enter' || c === 'NumpadEnter'
+    };
+  }
+  window.addEventListener('keydown', function (e) {
+    var kk = keyOf(e), k = e.key;
+    if (kk.left || kk.right || kk.up || kk.down || k === ' ') e.preventDefault();
+    if (e.repeat && kk.focus) return;
+    if (mode === 'ready') { if (kk.fire) { resume(); newGame(); } return; }
+    if (mode === 'over') {
+      if (kk.fire) { resume(); newGame(); }
+      else if (k === 'r' || k === 'R') { resume(); newGame(); }
+      else if (k === 'm' || k === 'M') toggleMute();
+      return;
+    }
+    if (st) {
+      if (kk.focus) G.setFocus(st, true);
+      var d = 0;
+      if (kk.left) d = -1.2 * DEG;
+      else if (kk.right) d = 1.2 * DEG;
+      else if (kk.up) d = -3.8 * DEG;
+      else if (kk.down) d = 3.8 * DEG;
+      if (d) G.adjustAim(st, d);
+    }
+    if (k === 'r' || k === 'R') newGame();
+    else if (k === 'm' || k === 'M') toggleMute();
+  });
+  window.addEventListener('keyup', function (e) {
+    var kk = keyOf(e);
+    if (kk.focus && st) G.setFocus(st, false);
+  });
+
+  // ---------- 按钮 ----------
+  $('btnStart').addEventListener('click', function () { resume(); newGame(); });
+  $('btnAgain').addEventListener('click', function () { resume(); newGame(); });
+  $('btnRetry').addEventListener('click', function () { resume(); newGame(); });
+  function toggleMute() {
+    muted = !muted;
+    if (MASTER) MASTER.gain.value = muted ? 0 : 0.5;
+    $('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+    try { localStorage.setItem('gatherlight_mute', muted ? '1' : '0'); } catch (e) { }
+  }
+  $('btnMute').addEventListener('click', toggleMute);
+  $('btnMute').textContent = muted ? '♪ 静' : '♪ 开';
+
+  // ---------- 主循环 ----------
+  var last = 0, hudT = 0, fpsAcc = 0, fpsN = 0, fps = 60, lastWave = 0;
+  function frame(ts) {
+    var dt = last ? (ts - last) / 1000 : 0.016;
+    last = ts;
+    if (dt > 0.06) dt = 0.06;
+
+    if (st && mode === 'playing') {
+      // 先 update 产出事件 → 再取事件播音效 → 最后渲染（渲染层会清空事件流）
+      G.update(st, dt);
+      for (var i = 0; i < st.events.length; i++) {
+        var e = st.events[i];
+        if (e.type === 'deliver') { sfxDeliver(e.freq, e.combo, st.seats.length); drone(st.seats.length); }
+        else if (e.type === 'bump') sfxBump();
+        else if (e.type === 'leave') sfxLeave();
+        else if (e.type === 'wave') sfxWave(e.wave);
+        else if (e.type === 'exhaust') sfxExhaust();
+        else if (e.type === 'perfect') sfxPerfect();
+      }
+      hudT += dt;
+      if (hudT > 0.06) { hudT = 0; syncHUD(); }
+      if (st.phase === 'over') { syncHUD(); finish(); }
+    }
+
+    if (st) R.draw(ctx, st, dt);
+
+    if (dt > 0) { fpsAcc += 1 / dt; fpsN++; if (fpsN >= 30) { fps = fpsAcc / fpsN; fpsAcc = 0; fpsN = 0; } }
+    requestAnimationFrame(frame);
+  }
+
+  fit();
+  st = G.create((Date.now() ^ 0x9e3779b9) >>> 0);
+  R.reset(st);
+  mode = 'ready';
+  syncHUD();
+  el.bestStart.textContent = bestTxt();
+  requestAnimationFrame(frame);
+
+  // 探针
+  window.__game = {
+    G: G, R: R,
+    get st() { return st; },
+    get mode() { return mode; },
+    get fps() { return fps; },
+    newGame: newGame,
+    aim: function (x, y) { return G.aimAt(st, x, y); },
+    focus: function (on) { return G.setFocus(st, !!on); },
+    K: function () { return K; }
+  };
+})();
+</script>
+</body>
+</html>
