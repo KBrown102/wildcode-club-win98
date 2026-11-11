@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#EFE7D6">
+<title>移荫 · 一日阴</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv" width="900" height="620"></canvas>
+    <div id="hud">
+      <div class="hl"><b id="lvName">其之一 · 小院</b><i id="lvSeed">#0</i></div>
+      <div id="rail"></div>
+      <div class="hr">
+        <span>庇<b id="cShade">0/0</b></span>
+        <span>晒<b id="cSun">0/0</b></span>
+        <span>分<b id="cScore">0</b></span>
+        <span>最佳<b id="cBest">—</b></span>
+      </div>
+    </div>
+  </div>
+  <div id="bar">
+    <button id="btnGo" class="pri">开演</button>
+    <button id="btnRot">转</button>
+    <button id="btnBack">收起</button>
+    <button id="btnClear">重摆</button>
+    <button id="btnMenu">选关</button>
+    <button id="btnMute">♪ 开</button>
+  </div>
+
+  <div id="menu" class="ov">
+    <div class="card wide">
+      <h1>移荫 · 一日阴</h1>
+      <p class="sub">日头自己走一天，影子跟着扫过院子。<br>你挪不动太阳，只能挪物件。</p>
+      <div id="grid" class="grid"></div>
+      <p class="tip">朱砂虚线框是要荫的地方，框下的红点标着它得在哪几个时辰落进影子里；藤黄实线框是要晒的地方，一整天都不能被影子压住。<b>拖动物件时，会画出它一整天的影迹</b>——先看影迹，再放手。</p>
+      <button id="mClose" class="pri">直接开始</button>
+    </div>
+  </div>
+
+  <div id="settle" class="ov">
+    <div class="card">
+      <div class="stars" id="sStars">☆☆☆</div>
+      <div class="big">得分 <b id="sScore">0</b></div>
+      <div class="ln" id="sLine1"></div>
+      <div class="ln" id="sLine2"></div>
+      <p class="word" id="sWord"></p>
+      <div class="btns">
+        <button id="sAgain">再来一天</button>
+        <button id="sNext" class="pri">下一院</button>
+        <button id="sMenu">选关</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
