@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>合字 · 水诗</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div class="bar" id="hudTop">
+    <div class="lvName" id="hLv">一 · 夜泳<small>3 字</small></div>
+    <div id="slots"></div>
+    <div id="hTime">95"</div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="cv" width="900" height="620"></canvas>
+    </div>
+  </div>
+
+  <div class="bar" id="hudBot">
+    <div class="qiWrap">
+      <div class="qiLbl">气 · 划水消耗，浮着不动会慢慢回来</div>
+      <div class="qiBar"><div class="qiFill" id="hQi"></div></div>
+    </div>
+    <div id="hint">游过字块，尾流会把它顺着你游的方向带走</div>
+    <div class="btns">
+      <button class="btn" id="bSplit" title="拆回最近合成的字（Z）">拆回 Z</button>
+      <button class="btn" id="bRetry" title="重来（R）">重来 R</button>
+      <button class="btn" id="bLv" title="选关（Esc）">选关</button>
+      <button class="btn" id="bMute">♪</button>
+    </div>
+  </div>
+</div>
+
+<!-- 开始 -->
+<div class="mask" id="mStart">
+  <div class="panel">
+    <h1>合字 · 水诗</h1>
+    <div class="sub">一池散开的偏旁，等你游过去把它们推到一起</div>
+    <div class="rules">
+      <div>① 你是水里游泳的人，<b>碰不到</b>那些字块。</div>
+      <div>② <b>游过去</b>——身后的尾流会把字块<b>顺着你游的方向</b>带走。</div>
+      <div>③ 把能组字的两块推到一块儿，它们就合成一个字。</div>
+      <div>④ 合错了不要紧：<b>点一下合成的字</b>，就拆回两块（不罚分）。</div>
+      <div>⑤ 划水要换气，<b>浮着不动</b>气会慢慢回来。</div>
+    </div>
+    <p style="text-align:center">
+      桌面 <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+      或 <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span> 游动，
+      也可以直接<b>点水面</b>，人会游过去；手机<b>点住拖动</b>即可。
+    </p>
+    <div class="row">
+      <button class="btn pri" id="bGo">下 水</button>
+      <button class="btn" id="bGoLv">选 关</button>
+    </div>
+  </div>
+</div>
+
+<!-- 选关 -->
+<div class="mask hide" id="mLv">
+  <div class="panel">
+    <h1 style="font-size:20px">选 一 池</h1>
+    <div class="sub">固定种子，可以反复琢磨同一池</div>
+    <div class="grid" id="lvGrid"></div>
+    <div class="row"><button class="btn" id="bLvBack">返 回</button></div>
+  </div>
+</div>
+
+<!-- 结算 -->
+<div class="mask hide" id="mRes">
+  <div class="panel">
+    <div class="resTitle" id="rTitle">这一池的字</div>
+    <div class="resPoem" id="rPoem"></div>
+    <div class="stars" id="rStars"></div>
+    <table class="res">
+      <tr><td>合成</td><td id="rW"></td></tr>
+      <tr><td>意外之字</td><td id="rB"></td></tr>
+      <tr><td>拆回次数</td><td id="rS"></td></tr>
+      <tr><td>余气 / 余时</td><td id="rQT"></td></tr>
+      <tr><td>得分</td><td id="rScore"></td></tr>
+      <tr><td>最佳</td><td id="rBest"></td></tr>
+    </table>
+    <div class="resNote" id="rNote"></div>
+    <div class="row">
+      <button class="btn pri" id="bNext">下一池</button>
+      <button class="btn" id="bAgain">再来一次</button>
+      <button class="btn" id="bResLv">选关</button>
+    </div>
+  </div>
+</div>
+
+<div id="rotToast">竖屏也能玩，横过来水面更宽 <button id="rotX">知道了</button></div>
+
+<script src="js/game.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script>
+(function () {
+  'use strict';
+  var G = window.WP301, R = window.WP301R, A = window.WP301A;
+  var W = G.W, H = G.H;
+  var KEY = 'wp301.save.v1';
+
+  var POEM = [
+    '星子掉进灯里，池水就不冷了。',
+    '松影落进江里，一个转身就是秋时。',
+    '波推着林走，光就灿了一地。',
+    '妈在灯下，池边有松——日子就和一个字：和。',
+    '种下的都在沐着光，好一片灿然的叶。',
+    '星、灯、池、松、秋、妈：夜色里最要紧的几样。',
+    '过了桥，江上那会儿，人间烟火也像仙。',
+    '月明，人好，河清，秋深——桂下有人低语。'
+  ];
+  var CN = ['一', '二', '三', '四', '五', '六', '七', '八'];
+
+  var save = { best: {}, unlocked: 1, muted: false };
+  try { var s0 = localStorage.getItem(KEY); if (s0) save = Object.assign(save, JSON.parse(s0)); } catch (e) { }
+
+  var st = G.createGame();
+  var cv = document.getElementById('cv');
+  var stage = document.getElementById('stage');
+  var wrap = document.getElementById('stageWrap');
+  var sc = 1, running = false, lastTs = 0, mergeCount = 0;
+
+  R.init(cv);
+  A.init();
+  A.setMuted(save.muted);
+  document.getElementById('bMute').textContent = save.muted ? '♪̸' : '♪';
+
+  // ---------- 适配 ----------
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var bars = document.getElementById('hudTop').offsetHeight + document.getElementById('hudBot').offsetHeight;
+    var availW = vw - 14, availH = vh - bars - 22;
+    sc = Math.min(availW / W, availH / H, 1.2);
+    sc = Math.max(0.3, sc);
+    stage.style.transform = 'scale(' + sc + ')';
+    wrap.style.width = (W * sc) + 'px';
+    wrap.style.height = (H * sc) + 'px';
+    document.body.classList.toggle('compact', sc < 0.8);
+    R.resize();
+    if (vh > vw && vw < 760) document.getElementById('rotToast').classList.add('show');
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 200); });
+  document.getElementById('rotX').onclick = function () {
+    document.getElementById('rotToast').classList.remove('show');
+  };
+
+  // ---------- 输入 ----------
+  var keys = {};
+  function keyOf(e) {
+    var k = e.key, c = e.code;
+    var m = {
+      ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R',
+      KeyW: 'U', KeyS: 'D', KeyA: 'L', KeyD: 'R'
+    };
+    return m[c] || m[k] || ({ w: 'U', s: 'D', a: 'L', d: 'R' }[String(k).toLowerCase()]) || null;
+  }
+  window.addEventListener('keydown', function (e) {
+    var k = keyOf(e);
+    if (k) { keys[k] = 1; e.preventDefault(); st.target = null; }
+    var kk = String(e.key).toLowerCase();
+    if (kk === 'z') { doSplit(); e.preventDefault(); }
+    else if (kk === 'r') { startLevel(st.li); e.preventDefault(); }
+    else if (e.key === 'Escape') { showLv(); e.preventDefault(); }
+  });
+  window.addEventListener('keyup', function (e) { var k = keyOf(e); if (k) keys[k] = 0; });
+  window.addEventListener('blur', function () { keys = {}; });
+
+  function applyKeys() {
+    var x = (keys.R ? 1 : 0) - (keys.L ? 1 : 0);
+    var y = (keys.D ? 1 : 0) - (keys.U ? 1 : 0);
+    G.setInput(st, x, y);
+  }
+
+  function toStage(ev) {
+    var r = cv.getBoundingClientRect();
+    var cx = ev.clientX !== undefined ? ev.clientX : (ev.touches && ev.touches[0].clientX);
+    var cy = ev.clientY !== undefined ? ev.clientY : (ev.touches && ev.touches[0].clientY);
+    return { x: (cx - r.left) / (r.width / W), y: (cy - r.top) / (r.height / H) };
+  }
+  var dragging = false;
+  function onDown(ev) {
+    if (st.phase !== 'play') return;
+    var p = toStage(ev);
+    // 点已成字 = 拆回
+    for (var i = st.chars.length - 1; i >= 0; i--) {
+      var c = st.chars[i];
+      if (Math.hypot(c.x - p.x, c.y - p.y) < G.C.R_RAD + 10) {
+        G.splitChar(st, i); A.split(); ev.preventDefault(); return;
+      }
+    }
+    dragging = true; st.target = p; keys = {};
+    ev.preventDefault();
+  }
+  function onMove(ev) { if (dragging && st.phase === 'play') { st.target = toStage(ev); ev.preventDefault(); } }
+  function onUp() { dragging = false; }
+  cv.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  cv.addEventListener('touchstart', onDown, { passive: false });
+  cv.addEventListener('touchmove', onMove, { passive: false });
+  cv.addEventListener('touchend', onUp);
+
+  function doSplit() {
+    if (st.phase !== 'play' || !st.chars.length) return;
+    G.splitChar(st, st.chars.length - 1); A.split();
+  }
+
+  // ---------- 关卡 ----------
+  function startLevel(li) {
+    G.start(st, li, 1000 + li * 77);
+    mergeCount = 0;
+    keys = {};
+    running = true;
+    hideAll();
+    buildSlots();
+    fit();
+    document.getElementById('hint').textContent = '游过字块，尾流会把它顺着你游的方向带走';
+  }
+  function hideAll() {
+    ['mStart', 'mLv', 'mRes'].forEach(function (i) { document.getElementById(i).classList.add('hide'); });
+  }
+  function buildSlots() {
+    var box = document.getElementById('slots');
+    box.innerHTML = '';
+    st.words.forEach(function (w) {
+      var d = document.createElement('div');
+      d.className = 'slot'; d.textContent = w;
+      box.appendChild(d);
+    });
+    document.getElementById('hLv').innerHTML = CN[st.li] + ' · ' + G.LEVELS[st.li].name +
+      '<small>' + st.words.length + ' 字</small>';
+  }
+
+  // ---------- HUD ----------
+  function updateHUD() {
+    var slots = document.getElementById('slots').children;
+    for (var i = 0; i < slots.length; i++) slots[i].classList.toggle('on', !!st.done[i]);
+    document.getElementById('hTime').textContent = Math.ceil(st.tLeft) + '"';
+    var q = st.qi / st.qiMax;
+    var qf = document.getElementById('hQi');
+    qf.style.width = (q * 100).toFixed(1) + '%';
+    qf.classList.toggle('low', q < 0.25);
+    var hint = document.getElementById('hint');
+    if (st.phase === 'play') {
+      if (q < 0.18) hint.textContent = '气不够了——松手浮一会儿，它会慢慢回来';
+      else if (st.bonus.length) hint.textContent = '「' + st.bonus.join('') + '」是意外之字，点它可以拆回';
+      else if (!st.merges) hint.textContent = '游过字块，尾流会把它顺着你游的方向带走';
+      else hint.textContent = '虚线连着的两块能合成一个字';
+    }
+  }
+
+  // ---------- 事件→音效 ----------
+  function handleEvents() {
+    for (var i = 0; i < st.events.length; i++) {
+      var e = st.events[i];
+      if (e.t === 'merge') { A.merge(mergeCount++, e.bonus); }
+      else if (e.t === 'bump') A.bump();
+      else if (e.t === 'split') A.split();
+      else if (e.t === 'win') A.win();
+      else if (e.t === 'timeup') A.timeup();
+    }
+  }
+
+  // ---------- 主循环 ----------
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    var dt = lastTs ? (ts - lastTs) / 1000 : 0;
+    lastTs = ts;
+    if (!(dt > 0)) dt = 0;
+    if (dt > 0.05) dt = 0.05;
+
+    if (running && st.phase === 'play') applyKeys();
+    else G.setInput(st, 0, 0);
+
+    G.update(st, dt);
+    handleEvents();
+    R.onEvents(st);
+    st.events.length = 0;
+    R.draw(st, dt);
+    updateHUD();
+
+    if (Math.hypot(st.swim.vx, st.swim.vy) > 60) A.stroke(Math.hypot(st.swim.vx, st.swim.vy));
+
+    if (st.over && !st._shown) { st._shown = 1; running = false; setTimeout(showResult, 900); }
+  }
+
+  // ---------- 结算 ----------
+  function showResult() {
+    var sco = G.score(st);
+    var nst = G.stars(st, st.li);
+    var k = String(st.li);
+    if (!save.best[k] || sco > save.best[k]) save.best[k] = sco;
+    if (st.win && st.li + 1 > save.unlocked - 1) save.unlocked = Math.max(save.unlocked, st.li + 2);
+    if (save.unlocked > G.LEVELS.length) save.unlocked = G.LEVELS.length;
+    try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { }
+
+    document.getElementById('rTitle').textContent = st.win ? '成了' : '这一池的字';
+    document.getElementById('rPoem').textContent = st.words.join('');
+    document.getElementById('rStars').textContent = '★★★'.slice(0, nst) + '☆☆☆'.slice(0, 3 - nst);
+    document.getElementById('rW').textContent = st.done.filter(Boolean).length + ' / ' + st.words.length;
+    document.getElementById('rB').textContent = st.bonus.length ? st.bonus.join(' ') : '—';
+    document.getElementById('rS').textContent = st.splits + ' 次';
+    document.getElementById('rQT').textContent = Math.round(st.qi) + ' / ' + Math.ceil(st.tLeft) + '"';
+    document.getElementById('rScore').textContent = sco;
+    document.getElementById('rBest').textContent = save.best[k];
+    document.getElementById('rNote').textContent = st.win
+      ? POEM[st.li] + '（你合成的顺序，就是刚才那段调子。）'
+      : '字还没凑齐。这些部件一直在这池水里，随时可以再来。';
+    document.getElementById('bNext').style.display = (st.win && st.li + 1 < G.LEVELS.length) ? '' : 'none';
+    document.getElementById('mRes').classList.remove('hide');
+  }
+
+  // ---------- 选关 ----------
+  function showLv() {
+    running = false;
+    var g = document.getElementById('lvGrid');
+    g.innerHTML = '';
+    G.LEVELS.forEach(function (L, i) {
+      var lock = i + 1 > save.unlocked;
+      var d = document.createElement('div');
+      d.className = 'lvCard' + (lock ? ' lock' : '');
+      var best = save.best[String(i)];
+      var ns = 0;
+      if (best) { var th = G.STAR[i]; for (var j = 0; j < 3; j++) if (best >= th[j]) ns++; }
+      d.innerHTML = '<div class="n">' + CN[i] + '</div><div class="t">' + L.name + '</div>' +
+        '<div class="w">' + L.words.join('') + '</div>' +
+        '<div class="s">' + (best ? ('★'.repeat(ns) + ' ' + best) : (lock ? '未开' : '—')) + '</div>';
+      if (!lock) d.onclick = function () { A.click(); startLevel(i); };
+      g.appendChild(d);
+    });
+    hideAll();
+    document.getElementById('mLv').classList.remove('hide');
+  }
+
+  // ---------- 按钮 ----------
+  document.getElementById('bGo').onclick = function () { A.init(); A.resume(); A.click(); startLevel(0); };
+  document.getElementById('bGoLv').onclick = function () { A.init(); A.resume(); A.click(); showLv(); };
+  document.getElementById('bLvBack').onclick = function () {
+    A.click(); hideAll();
+    if (!running && !st.chars.length && st.phase !== 'play') document.getElementById('mStart').classList.remove('hide');
+  };
+  document.getElementById('bLv').onclick = function () { A.click(); showLv(); };
+  document.getElementById('bResLv').onclick = function () { A.click(); showLv(); };
+  document.getElementById('bRetry').onclick = function () { A.click(); startLevel(st.li); };
+  document.getElementById('bAgain').onclick = function () { A.click(); startLevel(st.li); };
+  document.getElementById('bSplit').onclick = function () { A.click(); doSplit(); };
+  document.getElementById('bNext').onclick = function () { A.click(); startLevel(Math.min(G.LEVELS.length - 1, st.li + 1)); };
+  document.getElementById('bMute').onclick = function () {
+    save.muted = !save.muted; A.setMuted(save.muted);
+    this.textContent = save.muted ? '♪̸' : '♪';
+    try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { }
+  };
+
+  // ---------- 启动 ----------
+  G.start(st, 0, 1000);
+  st.phase = 'idle';
+  buildSlots();
+  fit();
+  requestAnimationFrame(frame);
+
+  window.__WPDBG = { st: st, G: G, start: startLevel, split: doSplit, fit: fit, sc: function () { return sc; } };
+})();
+</script>
+</body>
+</html>
