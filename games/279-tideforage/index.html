@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>赶海 · 潮退的一程</title>
+<style>
+  :root{
+    --ink:#171717; --bone:#EFEADD; --verm:#C7452E; --must:#D9A441;
+    --sea:#244F7C; --deep:#16304E; --teal:#4E7C78; --sand:#DCCBA6;
+    --glass:rgba(239,234,221,.72); --glass2:rgba(22,48,78,.55);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0E1A2B}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink); user-select:none; -webkit-user-select:none;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:none;
+  }
+  #wrap{position:fixed;inset:0;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 0%,#1B3554 0%,#0E1A2B 70%)}
+  #stage{position:absolute;left:50%;top:50%;width:480px;height:800px;
+    transform-origin:center center;transform:translate(-50%,-50%) scale(1);
+    box-shadow:0 24px 70px rgba(0,0,0,.55); border-radius:6px; overflow:hidden}
+  canvas{position:absolute;left:0;top:0;display:block}
+
+  /* ── HUD ── */
+  #hud{position:absolute;left:0;top:0;width:480px;height:800px;pointer-events:none}
+  .row{position:absolute;display:flex;align-items:center;gap:8px}
+
+  .topbar{left:12px;right:12px;top:10px;height:34px;justify-content:space-between}
+  .chip{
+    pointer-events:none;
+    background:var(--glass);backdrop-filter:blur(10px) saturate(1.2);
+    -webkit-backdrop-filter:blur(10px) saturate(1.2);
+    border:1px solid rgba(23,23,23,.16);border-radius:11px;
+    padding:5px 11px;font-size:14px;font-weight:700;letter-spacing:.3px;
+    color:var(--ink); display:flex;align-items:center;gap:7px;
+    box-shadow:0 3px 12px rgba(0,0,0,.18)
+  }
+  .chip .k{font-weight:600;font-size:11px;opacity:.62;letter-spacing:1px}
+  .chip.score{font-variant-numeric:tabular-nums;min-width:86px;justify-content:center}
+  .chip.warnv{background:rgba(199,69,46,.86);color:var(--bone);border-color:rgba(239,234,221,.4)}
+  .btns{display:flex;gap:7px;pointer-events:auto}
+  .ib{
+    width:34px;height:34px;border-radius:11px;cursor:pointer;
+    background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(23,23,23,.16);color:var(--ink);
+    font-size:14px;font-weight:700;font-family:inherit;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 12px rgba(0,0,0,.18); transition:transform .12s,background .16s
+  }
+  .ib:active{transform:scale(.9)}
+  .ib.off{color:#9C968A}
+  .ib.hot{background:rgba(199,69,46,.86);color:var(--bone);border-color:rgba(239,234,221,.4)}
+
+  .tiderow{left:12px;right:12px;top:52px;height:30px}
+  .phasename{
+    background:var(--glass2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    color:var(--bone);border-radius:9px;padding:5px 10px;font-size:12.5px;font-weight:700;
+    letter-spacing:2px;min-width:56px;text-align:center;
+    border:1px solid rgba(239,234,221,.22)
+  }
+  .bar{
+    flex:1;height:12px;border-radius:7px;overflow:hidden;
+    background:rgba(22,48,78,.42);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(239,234,221,.24);position:relative
+  }
+  .fill{height:100%;width:0%;border-radius:6px;background:var(--teal);
+    transition:width .08s linear, background .3s}
+  .secs{
+    background:var(--glass2);color:var(--bone);border-radius:9px;padding:5px 8px;
+    font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;min-width:44px;
+    text-align:center;border:1px solid rgba(239,234,221,.22)
+  }
+
+  .bagrow{left:12px;right:12px;top:92px;height:34px}
+  .baglabel{
+    background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(23,23,23,.16);border-radius:9px;padding:6px 9px;
+    font-size:12px;font-weight:700;letter-spacing:2px;box-shadow:0 3px 12px rgba(0,0,0,.18)
+  }
+  .slots{display:flex;gap:5px;flex:1}
+  .slot{
+    flex:1;height:26px;border-radius:7px;
+    background:rgba(239,234,221,.30);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1.5px dashed rgba(23,23,23,.28);
+    display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;font-weight:700;color:rgba(23,23,23,.5);
+    transition:background .18s,border-color .18s,transform .18s
+  }
+  .slot.full{
+    border-style:solid;border-color:rgba(23,23,23,.55);color:var(--ink);
+    transform:scale(1.04);box-shadow:0 2px 8px rgba(0,0,0,.22)
+  }
+  .combo{
+    background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(23,23,23,.16);border-radius:9px;padding:6px 9px;
+    font-size:12px;font-weight:800;min-width:46px;text-align:center;
+    color:var(--verm);font-variant-numeric:tabular-nums;
+    box-shadow:0 3px 12px rgba(0,0,0,.18); opacity:0; transition:opacity .2s
+  }
+  .combo.on{opacity:1}
+
+  .breathhint{
+    position:absolute;left:0;right:0;top:134px;text-align:center;
+    font-size:12.5px;font-weight:700;letter-spacing:2px;color:var(--teal);
+    text-shadow:0 1px 0 rgba(239,234,221,.9),0 0 14px rgba(239,234,221,.9);
+    opacity:0;transition:opacity .22s
+  }
+  .breathhint.on{opacity:1}
+
+  /* ── 遮罩 ── */
+  .ov{
+    position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(14,26,43,.55);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+    pointer-events:auto;z-index:20;padding:22px
+  }
+  .ov.on{display:flex}
+  .card{
+    width:100%;max-width:400px;background:rgba(239,234,221,.94);
+    border:1px solid rgba(23,23,23,.18);border-radius:20px;padding:22px 20px 20px;
+    box-shadow:0 22px 60px rgba(0,0,0,.5);max-height:724px;overflow:auto;
+    -webkit-overflow-scrolling:touch
+  }
+  .card h1{margin:0 0 4px;font-size:27px;letter-spacing:3px;line-height:1.24}
+  .card .sub{margin:0 0 16px;font-size:12.5px;color:#6A6152;letter-spacing:1.4px;line-height:1.7}
+  .rules{margin:0 0 16px;padding:0;list-style:none}
+  .rules li{
+    font-size:13px;line-height:1.62;color:#3A342A;padding:6px 0 6px 22px;position:relative;
+    border-top:1px dashed rgba(23,23,23,.14)
+  }
+  .rules li:first-child{border-top:0}
+  .rules li::before{
+    content:"";position:absolute;left:6px;top:15px;width:6px;height:6px;border-radius:50%;
+    background:var(--verm)
+  }
+  .rules b{color:var(--verm)}
+  .go{
+    width:100%;height:50px;border:0;border-radius:14px;cursor:pointer;
+    background:var(--verm);color:var(--bone);font-size:16px;font-weight:800;letter-spacing:4px;
+    font-family:inherit;box-shadow:0 8px 20px rgba(199,69,46,.34);transition:transform .12s
+  }
+  .go:active{transform:scale(.97)}
+  .go.ghost{background:transparent;color:#6A6152;box-shadow:none;
+    border:1.5px solid rgba(23,23,23,.24);height:42px;font-size:13.5px;letter-spacing:2px;
+    margin-top:9px;font-weight:700}
+
+  .sum{display:flex;gap:9px;margin:0 0 14px}
+  .sum div{
+    flex:1;text-align:center;background:rgba(217,164,65,.16);border-radius:13px;padding:11px 4px;
+    border:1px solid rgba(23,23,23,.12)
+  }
+  .sum .n{font-size:23px;font-weight:800;color:var(--verm);font-variant-numeric:tabular-nums;line-height:1.1}
+  .sum .l{font-size:10.5px;color:#6A6152;letter-spacing:1.4px;margin-top:4px}
+  .kernel{
+    font-size:13.5px;line-height:1.85;color:#3A342A;text-align:center;
+    padding:14px 8px 4px;letter-spacing:1.1px
+  }
+  .kernel::before,.kernel::after{content:"—";color:var(--must);margin:0 7px}
+
+  /* 图鉴 */
+  .codex{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+  .cx{
+    background:rgba(255,255,255,.5);border:1px solid rgba(23,23,23,.14);border-radius:12px;
+    padding:9px 5px 8px;text-align:center;min-height:92px;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start
+  }
+  .cx.lock{background:rgba(23,23,23,.05);border-style:dashed}
+  .cx .dot{
+    width:30px;height:30px;border-radius:50%;border:1.6px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:800;color:var(--ink);margin-bottom:6px;flex:none
+  }
+  .cx.lock .dot{background:rgba(23,23,23,.12)!important;border-color:rgba(23,23,23,.24);color:#9C968A}
+  .cx .nm{font-size:11.5px;font-weight:800;letter-spacing:.6px;margin-bottom:3px}
+  .cx .pm{font-size:9.5px;line-height:1.5;color:#6A6152;letter-spacing:.2px}
+  .cx.lock .nm{color:#9C968A}
+  .cx .tier{font-size:8.5px;letter-spacing:1px;color:var(--must);font-weight:800;margin-top:3px}
+  .cx.lock .tier{color:#B5AFA2}
+
+  .unlockbar{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+  .urow{
+    display:flex;align-items:center;gap:8px;font-size:11.5px;
+    background:rgba(255,255,255,.42);border:1px solid rgba(23,23,23,.12);
+    border-radius:10px;padding:7px 10px;color:#6A6152
+  }
+  .urow.got{background:rgba(78,124,120,.16);color:#2F4F4C;border-color:rgba(78,124,120,.4)}
+  .urow .un{font-weight:800;color:var(--ink);min-width:56px}
+  .urow .ud{flex:1}
+  .urow .us{font-size:10px;opacity:.85;flex:none}
+
+  .tip{font-size:11px;color:#8B8474;text-align:center;letter-spacing:1px;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="row topbar">
+        <div class="chip" id="tideChip"><span class="k">潮</span><span id="tideNum">1</span></div>
+        <div class="chip score" id="scoreChip"><span class="k">分</span><span id="scoreNum">0</span></div>
+        <div class="btns">
+          <button class="ib" id="btnMute" title="声音">♪</button>
+          <button class="ib" id="btnCodex" title="赶海谱">谱</button>
+          <button class="ib" id="btnEnd" title="收工">收</button>
+        </div>
+      </div>
+
+      <div class="row tiderow">
+        <div class="phasename" id="phaseName">退潮</div>
+        <div class="bar"><div class="fill" id="tideFill"></div></div>
+        <div class="secs" id="phaseSec">6.5s</div>
+      </div>
+
+      <div class="row bagrow">
+        <div class="baglabel">桶</div>
+        <div class="slots" id="slots"></div>
+        <div class="combo" id="comboChip">×1.0</div>
+      </div>
+
+      <div class="breathhint" id="breathHint">屏息中 · 它正靠过来</div>
+    </div>
+
+    <!-- 开场 -->
+    <div class="ov on" id="ovStart">
+      <div class="card">
+        <h1>赶海 · 潮退的一程</h1>
+        <p class="sub">退潮时下到滩上，涨潮前回到岸上。<br>海把东西带来，也把东西带走。</p>
+        <ul class="rules">
+          <li><b>拖屏幕</b>走动（桌面用方向键 / WASD）。</li>
+          <li>贝壳、海螺、沙钱是<b>静物</b>，走近就顺手捡起。</li>
+          <li>蟹、弹涂鱼、章鱼<b>会躲</b>：你一动，它就跑。</li>
+          <li><b>站着别动半秒</b>进入屏息——它以为你走了，会自己靠过来。</li>
+          <li>桶装满回岸边，自动倒进<b>篓子</b>；装得越满，加成越高。</li>
+          <li>涨潮就往岸上跑；被浪卷到只掉一样东西，<b>不扣命、不算输</b>。</li>
+        </ul>
+        <button class="go" id="btnStart">下 滩</button>
+        <div class="tip" id="startTip"></div>
+      </div>
+    </div>
+
+    <!-- 图鉴 -->
+    <div class="ov" id="ovCodex">
+      <div class="card">
+        <h1 style="font-size:22px">赶海谱</h1>
+        <p class="sub" id="codexSub">拾得 0 / 12</p>
+        <div class="codex" id="codexGrid"></div>
+        <div class="unlockbar" id="unlockList"></div>
+        <button class="go ghost" id="btnCloseCodex">回到滩上</button>
+      </div>
+    </div>
+
+    <!-- 收工 -->
+    <div class="ov" id="ovEnd">
+      <div class="card">
+        <h1 style="font-size:23px">收工</h1>
+        <p class="sub" id="endSub">这一趟，海给了你这些。</p>
+        <div class="sum">
+          <div><div class="n" id="eScore">0</div><div class="l">分</div></div>
+          <div><div class="n" id="eTide">1</div><div class="l">潮</div></div>
+          <div><div class="n" id="eCodex">0</div><div class="l">拾得</div></div>
+        </div>
+        <div class="kernel" id="eKernel">海把东西带来，也把东西带走——你只要来过这一趟。</div>
+        <button class="go" id="btnAgain">再 来 一 趟</button>
+        <button class="go ghost" id="btnEndCodex">看看赶海谱</button>
+        <div class="tip" id="endTip"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function () {
+  'use strict';
+  var TF = window.TideForage, TFR = window.TFRender;
+  var LW = TF.W, LH = TF.H;
+
+  var stage = document.getElementById('stage');
+  var cv = document.getElementById('cv');
+  var R = TFR.create(cv);
+  var game = TF.createGame({ seed: (Date.now() % 100000) | 0 });
+  var S = game.s;
+
+  // ── 存档 ──
+  var KEY = 'tideforage.v1';
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save() {
+    var d = load();
+    d.data = game.serialize();
+    d.muted = Audio.muted;
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {}
+  }
+  var saved = load();
+  game.hydrate(saved.data);
+
+  // ── 音频（五声音阶：宫商角徵羽）──
+  var Audio = (function () {
+    var ac = null, muted = !!saved.muted, master = null;
+    var SC = [523.25, 587.33, 659.25, 783.99, 880.0];
+    function ensure() {
+      if (ac) return ac;
+      try {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        master = ac.createGain();
+        master.gain.value = 0.32;
+        master.connect(ac.destination);
+      } catch (e) { ac = null; }
+      return ac;
+    }
+    function tone(freq, dur, type, vol, delay, glide) {
+      if (muted) return;
+      var c = ensure(); if (!c) return;
+      var t0 = c.currentTime + (delay || 0);
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'triangle';
+      o.frequency.setValueAtTime(freq, t0);
+      if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(40, glide), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.3, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function noise(dur, vol, cut, delay) {
+      if (muted) return;
+      var c = ensure(); if (!c) return;
+      var t0 = c.currentTime + (delay || 0);
+      var len = Math.max(1, Math.floor(c.sampleRate * dur));
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+      var src = c.createBufferSource(); src.buffer = buf;
+      var f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cut || 1400;
+      var g = c.createGain(); g.gain.value = vol || 0.25;
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t0);
+    }
+    return {
+      get muted() { return muted; },
+      setMuted(m) { muted = !!m; },
+      unlock: function () { ensure(); if (ac && ac.state === 'suspended') ac.resume(); },
+      pick: function (tier, combo) {
+        var i = Math.min(4, (tier - 1) + (combo > 4 ? 1 : 0));
+        tone(SC[i], 0.20, 'triangle', 0.30);
+        tone(SC[i] * 2, 0.10, 'sine', 0.11, 0.005);
+      },
+      discover: function () { [0, 2, 4].forEach(function (i, k) { tone(SC[i], 0.42, 'sine', 0.24, k * 0.09); }); },
+      unload: function (n) {
+        [0, 1, 2, 4].slice(0, Math.max(2, Math.min(4, Math.round(n / 2))))
+          .forEach(function (i, k) { tone(SC[i], 0.30, 'triangle', 0.26, k * 0.07); });
+      },
+      swept: function () { noise(0.55, 0.30, 900); tone(98, 0.5, 'sawtooth', 0.16, 0, 62); },
+      surge: function () { noise(0.42, 0.22, 1100); tone(74, 0.34, 'sine', 0.14, 0, 52); },
+      wash: function () { noise(0.16, 0.09, 2200); },
+      unlock: function () { [0, 1, 2, 4, 3].forEach(function (i, k) { tone(SC[i] * (k === 4 ? 2 : 1), 0.5, 'sine', 0.22, k * 0.1); }); },
+      phase: function (p) {
+        if (p === 'low') tone(SC[0], 0.34, 'sine', 0.16);
+        else if (p === 'rise') tone(SC[4], 0.34, 'sine', 0.16);
+        else if (p === 'sweep') noise(0.5, 0.2, 1200);
+      },
+      tide: function (n) { tone(SC[0] * 0.5, 0.6, 'sine', 0.14); tone(SC[2] * 0.5, 0.6, 'sine', 0.10, 0.1); }
+    };
+  })();
+
+  document.getElementById('btnMute').className = 'ib' + (Audio.muted ? ' off' : '');
+
+  // ── 自适应 ──
+  var scale = 1;
+  function fit() {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    if (window.visualViewport) { vw = window.visualViewport.width; vh = window.visualViewport.height; }
+    scale = Math.min(vw / LW, vh / LH);
+    if (!isFinite(scale) || scale <= 0) scale = 1;
+    stage.style.transform = 'translate(-50%,-50%) scale(' + scale + ')';
+    R.resize(scale);
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function () { setTimeout(fit, 120); });
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+  fit();
+
+  // ── 输入 ──
+  var input = { dx: 0, dy: 0 };
+  var keys = {};
+  var stick = { on: false, ox: 0, oy: 0, id: null };
+
+  function applyPointer() {
+    var kx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    var ky = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+    if (kx || ky) { input.dx = kx; input.dy = ky; return; }
+    input.dx = stick.dx || 0; input.dy = stick.dy || 0;
+  }
+
+  function onDown(e) {
+    if (e.target.closest && e.target.closest('.ib,.go')) return;
+    if (stick.id !== null) return;
+    stick.id = e.pointerId; stick.on = true;
+    stick.ox = e.clientX; stick.oy = e.clientY;
+    stick.dx = 0; stick.dy = 0;
+    Audio.unlock();
+    if (cv.setPointerCapture) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
+  }
+  function onMove(e) {
+    if (!stick.on || e.pointerId !== stick.id) return;
+    var dx = (e.clientX - stick.ox) / scale;
+    var dy = (e.clientY - stick.oy) / scale;
+    var L = Math.hypot(dx, dy);
+    if (L < 5) { stick.dx = 0; stick.dy = 0; }
+    else {
+      var m = Math.min(1, (L - 5) / 40);
+      stick.dx = dx / L * m; stick.dy = dy / L * m;
+    }
+    applyPointer();
+  }
+  function onUp(e) {
+    if (e.pointerId !== stick.id) return;
+    stick.on = false; stick.id = null; stick.dx = 0; stick.dy = 0;
+    applyPointer();
+  }
+  stage.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
+
+  window.addEventListener('keydown', function (e) {
+    var k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') { keys.up = 1; e.preventDefault(); }
+    else if (k === 'arrowdown' || k === 's') { keys.down = 1; e.preventDefault(); }
+    else if (k === 'arrowleft' || k === 'a') { keys.left = 1; e.preventDefault(); }
+    else if (k === 'arrowright' || k === 'd') { keys.right = 1; e.preventDefault(); }
+    else if (k === ' ') {
+      e.preventDefault();
+      if (ovStart.classList.contains('on')) doStart();
+    } else if (k === 'm') { toggleMute(); }
+    else if (k === 'c') { toggleCodex(); }
+    applyPointer();
+  });
+  window.addEventListener('keyup', function (e) {
+    var k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') keys.up = 0;
+    else if (k === 'arrowdown' || k === 's') keys.down = 0;
+    else if (k === 'arrowleft' || k === 'a') keys.left = 0;
+    else if (k === 'arrowright' || k === 'd') keys.right = 0;
+    applyPointer();
+  });
+  window.addEventListener('blur', function () { keys = {}; stick.on = false; stick.dx = stick.dy = 0; applyPointer(); });
+  stage.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // ── HUD ──
+  var el = {
+    tideNum: document.getElementById('tideNum'),
+    scoreNum: document.getElementById('scoreNum'),
+    phaseName: document.getElementById('phaseName'),
+    tideFill: document.getElementById('tideFill'),
+    phaseSec: document.getElementById('phaseSec'),
+    slots: document.getElementById('slots'),
+    comboChip: document.getElementById('comboChip'),
+    breathHint: document.getElementById('breathHint'),
+    tideChip: document.getElementById('tideChip')
+  };
+  var PHASE = { ebb: '退潮', low: '低潮', rise: '涨潮', sweep: '冲刷' };
+  var PHASE_C = { ebb: '#4E7C78', low: '#4E7C78', rise: '#D9A441', sweep: '#C7452E' };
+  var slotEls = [], lastCap = -1, lastBag = -1, lastScore = -1, lastTide = -1, lastPhase = '';
+
+  function buildSlots(cap) {
+    el.slots.innerHTML = '';
+    slotEls = [];
+    for (var i = 0; i < cap; i++) {
+      var d = document.createElement('div');
+      d.className = 'slot';
+      el.slots.appendChild(d); slotEls.push(d);
+    }
+    lastCap = cap;
+  }
+
+  function syncHUD() {
+    var cap = game.capNow();
+    if (cap !== lastCap) buildSlots(cap);
+    if (S.bag.length !== lastBag) {
+      for (var i = 0; i < cap; i++) {
+        var sp = S.bag[i];
+        if (sp) {
+          slotEls[i].className = 'slot full';
+          slotEls[i].style.background = sp.color;
+          slotEls[i].textContent = sp.name.slice(0, 2);
+        } else {
+          slotEls[i].className = 'slot';
+          slotEls[i].style.background = '';
+          slotEls[i].textContent = '';
+        }
+      }
+      lastBag = S.bag.length;
+    }
+    if (S.score !== lastScore) { el.scoreNum.textContent = S.score; lastScore = S.score; }
+    if (S.tide !== lastTide) { el.tideNum.textContent = S.tide; lastTide = S.tide; }
+
+    el.phaseName.textContent = PHASE[S.phase] || '';
+    el.tideFill.style.width = (game.phaseP() * 100).toFixed(1) + '%';
+    el.tideFill.style.background = PHASE_C[S.phase] || '#4E7C78';
+    el.phaseSec.textContent = game.phaseLeft().toFixed(1) + 's';
+    el.tideChip.className = 'chip' + (S.surgeWarn ? ' warnv' : '');
+
+    if (S.combo >= 2) { el.comboChip.className = 'combo on'; el.comboChip.textContent = '×' + S.mult.toFixed(1); }
+    else el.comboChip.className = 'combo';
+
+    el.breathHint.className = 'breathhint' + (S.breath ? ' on' : '');
+  }
+
+  // ── 图鉴 ──
+  var ovCodex = document.getElementById('ovCodex');
+  var codexGrid = document.getElementById('codexGrid');
+  var unlockList = document.getElementById('unlockList');
+  var codexSub = document.getElementById('codexSub');
+
+  function buildCodex() {
+    codexGrid.innerHTML = '';
+    TF.SPECIES.forEach(function (sp) {
+      var d = document.createElement('div');
+      d.className = 'cx'; d.dataset.id = sp.id;
+      d.innerHTML =
+        '<div class="dot" style="background:' + sp.color + '">' + sp.name.charAt(0) + '</div>' +
+        '<div class="nm"></div><div class="pm"></div><div class="tier"></div>';
+      codexGrid.appendChild(d);
+    });
+    unlockList.innerHTML = '';
+    TF.UNLOCKS.forEach(function (u) {
+      var d = document.createElement('div');
+      d.className = 'urow'; d.dataset.key = u.key;
+      d.innerHTML = '<span class="un">' + u.name + '</span><span class="ud"></span><span class="us"></span>';
+      unlockList.appendChild(d);
+    });
+  }
+  function syncCodex() {
+    var n = 0;
+    Array.prototype.forEach.call(codexGrid.children, function (d) {
+      var sp = TF.SP_BY_ID[d.dataset.id];
+      var got = !!S.codex[sp.id];
+      if (got) n++;
+      d.className = 'cx' + (got ? '' : ' lock');
+      d.querySelector('.nm').textContent = got ? sp.name : '？？';
+      d.querySelector('.pm').textContent = got ? sp.poem : '还没遇上';
+      d.querySelector('.tier').textContent = got ? ('★'.repeat(sp.tier)) : '';
+    });
+    codexSub.textContent = '拾得 ' + n + ' / ' + TF.SPECIES.length + '　·　最佳 ' + (S.best.score || 0) + ' 分';
+    Array.prototype.forEach.call(unlockList.children, function (d) {
+      var u = TF.UNLOCKS.filter(function (x) { return x.key === d.dataset.key; })[0];
+      var got = !!S.unlocks[u.key];
+      d.className = 'urow' + (got ? ' got' : '');
+      d.querySelector('.ud').textContent = u.desc;
+      d.querySelector('.us').textContent = got ? '已得' : u.hint;
+    });
+  }
+  buildCodex();
+
+  // ── 遮罩控制 ──
+  var ovStart = document.getElementById('ovStart');
+  var ovEnd = document.getElementById('ovEnd');
+  var paused = true;
+
+  function toggleCodex() {
+    var on = ovCodex.classList.toggle('on');
+    if (on) { syncCodex(); paused = true; }
+    else if (!ovStart.classList.contains('on') && !ovEnd.classList.contains('on')) paused = false;
+  }
+  function toggleMute() {
+    Audio.setMuted(!Audio.muted);
+    document.getElementById('btnMute').className = 'ib' + (Audio.muted ? ' off' : '');
+    document.getElementById('btnMute').textContent = Audio.muted ? '✕' : '♪';
+    save();
+  }
+
+  function doStart() {
+    Audio.unlock();
+    ovStart.classList.remove('on');
+    ovEnd.classList.remove('on');
+    paused = false;
+    game.reset(true);
+    lastBag = -1; lastScore = -1; lastTide = -1;
+    syncHUD();
+  }
+  function doEnd() {
+    if (S.over) return;
+    game.finish();
+    save();
+    document.getElementById('eScore').textContent = S.score;
+    document.getElementById('eTide').textContent = S.bestTide || S.tide;
+    document.getElementById('eCodex').textContent = Object.keys(S.codex).length;
+    document.getElementById('endTip').textContent = S.score >= (S.best.score || 0) && S.score > 0
+      ? '新纪录 · 最佳 ' + S.best.score + ' 分' : '最佳 ' + (S.best.score || 0) + ' 分';
+    ovEnd.classList.add('on');
+    paused = true;
+  }
+
+  document.getElementById('btnStart').addEventListener('click', doStart);
+  document.getElementById('btnAgain').addEventListener('click', doStart);
+  document.getElementById('btnCodex').addEventListener('click', toggleCodex);
+  document.getElementById('btnCloseCodex').addEventListener('click', toggleCodex);
+  document.getElementById('btnEndCodex').addEventListener('click', function () {
+    ovEnd.classList.remove('on'); toggleCodex();
+  });
+  document.getElementById('btnMute').addEventListener('click', toggleMute);
+  document.getElementById('btnEnd').addEventListener('click', doEnd);
+
+  document.getElementById('startTip').textContent =
+    (S.best.score ? '最佳 ' + S.best.score + ' 分 · 已拾得 ' + Object.keys(S.codex).length + '/' + TF.SPECIES.length
+                  : '第一次下滩 · 慢慢走');
+
+  // ── 事件泵 ──
+  function handleEvents(evts) {
+    for (var i = 0; i < evts.length; i++) {
+      var e = evts[i];
+      if (e.type === 'pick') Audio.pick(e.sp.tier, e.combo);
+      else if (e.type === 'discover') { Audio.discover(); foundNew.push(e.sp); }
+      else if (e.type === 'unload') Audio.unload(e.n);
+      else if (e.type === 'swept') Audio.swept();
+      else if (e.type === 'surge') Audio.surge();
+      else if (e.type === 'wash') Audio.wash();
+      else if (e.type === 'unlock') { Audio.unlock(); R.float(240, 250, '得到 ' + e.name, '#C7452E', true); }
+      else if (e.type === 'phase') Audio.phase(e.phase);
+      else if (e.type === 'spawn') { if (e.tide > 1) Audio.tide(e.tide); }
+    }
+    R.pump(evts);
+  }
+  var foundNew = [];
+
+  // ── 主循环 ──
+  var last = 0, acc = 0, saveT = 0;
+  function frame(ts) {
+    requestAnimationFrame(frame);
+    if (!last) last = ts;
+    var dt = (ts - last) / 1000; last = ts;
+    if (dt > 0.1) dt = 0.1;
+    if (dt < 0) dt = 0;
+
+    if (!paused && !S.over) {
+      game.update(dt, input);
+      handleEvents(game.drain());
+      saveT += dt;
+      if (saveT > 6) { saveT = 0; save(); }
+    } else {
+      game.drain();
+    }
+    syncHUD();
+    S.bagCap = game.capNow();
+    R.draw(S, dt);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { save(); } else { last = 0; }
+  });
+  window.addEventListener('beforeunload', save);
+
+  syncHUD();
+  requestAnimationFrame(frame);
+
+  // 供自动化探针使用
+  window.__game = game;
+  window.__input = input;
+  window.__render = R;
+  window.__paused = function () { return paused; };
+})();
+</script>
+</body>
+</html>
