@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>归架 · 轻重</title>
+<meta name="description" content="一间屋子的搁板是个跷跷板：重的靠里，轻的靠外，把每件东西放回它该在的地方，还要让每面板都平下来。">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="panel">
+      <div id="info"></div>
+      <div id="tray"></div>
+      <div id="btns">
+        <button class="btn" id="btnPrev">◀ 换货</button>
+        <button class="btn" id="btnNextItem">换货 ▶</button>
+        <button class="btn" id="btnUndo">撤下一件</button>
+        <button class="btn" id="btnReset">重来 R</button>
+        <button class="btn" id="btnLevels2">选关</button>
+      </div>
+    </div>
+
+    <button id="mute" title="静音">🔊</button>
+    <div id="toast"></div>
+
+    <!-- 开始 -->
+    <div class="overlay" id="start">
+      <div class="ovTitle">归架 · 轻重</div>
+      <div class="ovSub">TILT SHELF · 一面墙的跷跷板</div>
+      <div class="ovBody">
+        每块搁板都绕着一个<em>朱柿色支点</em>转动。<b>重的靠里，轻的靠外</b>——同一样东西，离支点越远，压下去的力越大。<br>
+        把每件货物放回<em>它自己颜色的那一段</em>，同时让每面板都<em>平下来</em>，就算收工。<br>
+        板歪过头，东西会往低的那头<em>滑</em>，滑出板沿就掉到地上。
+      </div>
+      <div class="ovRow">
+        <button class="btn pri lg" id="btnStart">开始收纳</button>
+        <button class="btn lg" id="btnLevels">选关</button>
+      </div>
+      <div class="ovBody" style="margin-top:18px;margin-bottom:0;font-size:13px;opacity:.8">
+        鼠标 / 触摸：点格子放下，再点一次撤下 &nbsp;·&nbsp; 键盘：方向键或 WASD 移动，空格放下，Q / E 换货，R 重来
+      </div>
+    </div>
+
+    <!-- 选关 -->
+    <div class="overlay" id="levels">
+      <div class="ovTitle" style="font-size:30px">选 关</div>
+      <div class="ovSub">八面墙，越往后支点越偏</div>
+      <div id="lvGrid"></div>
+      <div class="ovRow"><button class="btn lg" id="lvBack">返回</button></div>
+    </div>
+
+    <!-- 结算 -->
+    <div class="overlay" id="result">
+      <div class="ovTitle" id="resTitle" style="font-size:32px">收工</div>
+      <div id="resStar"></div>
+      <div id="resStat"></div>
+      <div id="resWord"></div>
+      <div class="ovRow">
+        <button class="btn pri lg" id="btnNext">下一关</button>
+        <button class="btn lg" id="btnRetry">再来一次</button>
+        <button class="btn lg" id="btnResLevels">选关</button>
+      </div>
+    </div>
+
+    <!-- 竖屏提示（可关闭） -->
+    <div id="portrait">
+      <span>横屏玩更舒服：搁板是横的，力臂看得更清楚。</span>
+      <button id="portraitClose">知道了</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/game.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
