@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>守塔 · 一路挡住</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #0f131a; color: #e8edf4;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  #hud {
+    display: flex; align-items: center; gap: 12px; padding: 9px 14px; flex-wrap: wrap;
+    background: #141a24; border-bottom: 1px solid #212b3a;
+  }
+  .stat { font-size: 13px; color: #93a3b8; white-space: nowrap; }
+  .stat b { color: #e8edf4; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .stat.gold b { color: #ffd479; }
+  .stat.life b { color: #ff8b9a; }
+  .spacer { flex: 1; }
+  #hud button {
+    background: #1e2836; color: #e8edf4; border: 1px solid #2c3a4f;
+    border-radius: 9px; padding: 6px 11px; font-size: 13px; cursor: pointer;
+  }
+  #hud button:active { transform: scale(0.95); }
+
+  #shop { display: flex; gap: 8px; padding: 8px 14px 4px; flex-wrap: wrap; }
+  .tw {
+    flex: 1 1 0; min-width: 96px; background: #171e29; border: 1px solid #26314250;
+    border-radius: 11px; padding: 7px 9px; cursor: pointer; text-align: left;
+    border-color: #263142; color: #e8edf4;
+  }
+  .tw .n { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .tw .n i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .tw .c { font-size: 12px; color: #ffd479; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .tw .d { font-size: 11px; color: #7d8ea6; margin-top: 2px; }
+  .tw.on { border-color: #62a8ff; background: #1b2534; box-shadow: 0 0 0 1px #62a8ff55 inset; }
+  .tw.poor { opacity: 0.45; }
+
+  #stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; min-height: 0; padding: 6px; }
+  canvas { touch-action: none; border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,0.5); display: block; }
+
+  #panel {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    background: #1a222ef2; border: 1px solid #2e3c52; border-radius: 12px;
+    padding: 9px 12px; display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 26px rgba(0,0,0,0.45);
+  }
+  #panel.hide { display: none; }
+  #panel .info { font-size: 13px; color: #b9c7da; line-height: 1.45; }
+  #panel .info b { color: #fff; }
+  #panel button {
+    background: #2b6fd6; color: #fff; border: none; border-radius: 9px;
+    padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  #panel button.gray { background: #3a4658; }
+  #panel button:active { transform: scale(0.95); }
+  #panel button:disabled { opacity: 0.4; cursor: default; }
+
+  .veil {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(8,11,16,0.78); backdrop-filter: blur(3px); padding: 14px;
+  }
+  .veil.hide { display: none; }
+  .card {
+    background: #19212e; border: 1px solid #2c3a4f; border-radius: 16px;
+    padding: 22px 24px; text-align: center; max-width: 420px;
+    box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+  }
+  .card h1 { font-size: 24px; margin: 0 0 10px; }
+  .card p { font-size: 14px; color: #9fb0c6; line-height: 1.7; margin: 6px 0; text-align: left; }
+  .card .big { font-size: 30px; font-weight: 700; margin: 6px 0 4px; }
+  .card button {
+    background: #2b6fd6; color: #fff; border: none; border-radius: 11px;
+    padding: 11px 22px; font-size: 15px; cursor: pointer; margin-top: 14px;
+  }
+  .card button:active { transform: scale(0.96); }
+  #tip { padding: 6px 14px 10px; font-size: 12px; color: #6b7c94; text-align: center; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="stat">第 <b id="hWave">0</b> 波</div>
+    <div class="stat gold">金币 <b id="hGold">180</b></div>
+    <div class="stat life">生命 <b id="hLife">20</b></div>
+    <div class="stat">击杀 <b id="hKill">0</b></div>
+    <div class="spacer"></div>
+    <button id="btnCall">下一波</button>
+    <button id="btnSpeed">1x</button>
+    <button id="btnMute">🔊</button>
+  </div>
+
+  <div id="shop">
+    <button class="tw" data-type="arrow">
+      <div class="n"><i style="background:#7cc4ff"></i>箭塔</div>
+      <div class="c">60 金</div><div class="d">单体速射，通用</div>
+    </button>
+    <button class="tw" data-type="cannon">
+      <div class="n"><i style="background:#ffb26b"></i>炮塔</div>
+      <div class="c">110 金</div><div class="d">范围溅射，打成堆</div>
+    </button>
+    <button class="tw" data-type="frost">
+      <div class="n"><i style="background:#9fe8ff"></i>霜塔</div>
+      <div class="c">90 金</div><div class="d">减速，专治跑得快</div>
+    </button>
+  </div>
+
+  <div id="stage">
+    <canvas id="board"></canvas>
+
+    <div id="panel" class="hide">
+      <div class="info" id="pInfo"></div>
+      <button id="btnUp">升级</button>
+      <button id="btnSell" class="gray">卖出</button>
+    </div>
+
+    <div id="startVeil" class="veil">
+      <div class="card">
+        <h1>守塔 · 一路挡住</h1>
+        <p>1. 敌人从左边入口沿着路一直走到右边终点，走到了就扣你的生命。</p>
+        <p>2. 在路两边的空地上放塔，塔会自动打射程内的敌人。点已有的塔可以升级或卖掉。</p>
+        <p>3. 打死敌人给金币，每波打完还有奖励。生命扣完这局结束，随时可以重来。</p>
+        <button id="btnStart">开始守</button>
+      </div>
+    </div>
+
+    <div id="overVeil" class="veil hide">
+      <div class="card">
+        <h1>守不住了</h1>
+        <div class="big" id="oWave">第 0 波</div>
+        <div id="oSub" style="font-size:14px;color:#9fb0c6;margin-bottom:6px"></div>
+        <button id="btnRetry">再守一局</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tip">先选一种塔，再点空地放下；点自己的塔能升级。备战时点「下一波」可以提前召唤，多拿一笔金币。</div>
+</div>
+<script src="game.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
