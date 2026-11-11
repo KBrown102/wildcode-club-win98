@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>气泡 · 深潜</title>
+<style>
+  :root{
+    --ink:#E8EFF7; --dim:#9AA8BD; --panel:rgba(28,24,42,0.82);
+    --line:rgba(160,190,220,0.20); --warm:#E8B04B; --teal:#6FD8D0; --hot:#E8774B;
+    --ui:'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:radial-gradient(120% 90% at 50% 0%,#232036 0%,#14111D 55%,#0C0A14 100%);
+    font-family:var(--ui);color:var(--ink);overflow:hidden;user-select:none}
+  #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{position:relative;width:620px;flex:0 0 auto;transform-origin:center center;
+    border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6),0 0 0 1px rgba(160,190,220,.10)}
+  canvas{display:block;background:#14111D}
+
+  #hud{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:10px;
+    padding:0 12px;background:linear-gradient(180deg,rgba(20,17,29,.92),rgba(20,17,29,.30));
+    font-size:13px;letter-spacing:.02em}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 9px;
+    display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip b{font-weight:600;font-size:14px}
+  .lv{color:var(--teal)}
+  #airWrap{flex:1;min-width:80px}
+  #airBar{position:relative;height:12px;border-radius:7px;background:rgba(120,150,190,.16);
+    border:1px solid var(--line);overflow:hidden}
+  #airN{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#8FD6F0,#CFE8F2)}
+  #airT{position:absolute;top:0;bottom:0;width:0;
+    background:repeating-linear-gradient(115deg,rgba(111,216,208,.85) 0 5px,rgba(111,216,208,.45) 5px 10px)}
+  .lbl{font-size:11px;color:var(--dim);letter-spacing:.06em}
+  .hint{position:absolute;left:50%;transform:translateX(-50%);z-index:6;padding:5px 12px;border-radius:20px;
+    font-size:12px;pointer-events:none;opacity:0;transition:opacity .18s;white-space:nowrap}
+  #gapHint{top:64px;background:rgba(232,119,75,.16);border:1px solid rgba(232,119,75,.55);color:#F0B9A4}
+  #shyHint{top:64px;background:rgba(232,176,75,.14);border:1px solid rgba(232,176,75,.5);color:#F2D79B}
+  #surfHint{top:96px;background:rgba(20,17,29,.85);border:1px solid var(--line);color:var(--dim)}
+
+  #ctrl{position:absolute;bottom:0;left:0;right:0;height:78px;display:flex;align-items:center;justify-content:center;
+    gap:9px;padding:0 10px;background:linear-gradient(0deg,rgba(20,17,29,.94),rgba(20,17,29,.34))}
+  .btn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:12px;
+    height:50px;min-width:56px;padding:0 12px;font-size:13px;font-family:var(--ui);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .btn:active,.btn.on{background:rgba(120,180,220,.26);border-color:rgba(160,210,240,.6)}
+  .btn .k{font-size:16px;line-height:1}
+  .btn .t{font-size:10px;color:var(--dim)}
+  .btn.inf{border-color:rgba(143,214,240,.4)}
+  .btn.def{border-color:rgba(232,119,75,.36)}
+  .btn.mini{min-width:44px;height:44px;padding:0 8px}
+  #mute{position:absolute;right:10px;top:62px;z-index:20;width:34px;height:34px;border-radius:9px;
+    background:var(--panel);border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:15px;
+    display:flex;align-items:center;justify-content:center}
+  #portrait{position:absolute;left:10px;right:10px;bottom:86px;z-index:9;background:rgba(20,17,29,.94);
+    border:1px solid rgba(111,216,208,.45);border-radius:12px;padding:10px 12px;font-size:12px;color:#BFD8E0;
+    display:none;align-items:center;gap:10px}
+  #portrait b{color:var(--teal);font-weight:600}
+  #portrait button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:16px;padding:0 2px}
+
+  #ov{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+    background:rgba(12,10,20,.80);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);padding:18px}
+  #ov.hide{display:none}
+  .card{max-width:470px;width:100%;text-align:center;background:linear-gradient(180deg,rgba(38,32,56,.96),rgba(24,20,36,.96));
+    border:1px solid var(--line);border-radius:18px;padding:22px 20px;max-height:100%;overflow:auto}
+  .card h1{margin:0 0 4px;font-size:26px;letter-spacing:.10em;font-weight:600}
+  .card h2{margin:0 0 10px;font-size:19px;letter-spacing:.06em;font-weight:600}
+  .sub{color:var(--dim);font-size:12.5px;line-height:1.75;margin:0 0 14px}
+  .sub em{color:var(--warm);font-style:normal}
+  .sub i{color:var(--teal);font-style:normal}
+  .rows{display:flex;flex-direction:column;gap:6px;margin:0 0 16px;text-align:left}
+  .row{display:flex;gap:9px;align-items:flex-start;background:rgba(120,150,190,.09);
+    border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12px;line-height:1.6}
+  .row s{text-decoration:none;flex:0 0 22px;height:22px;border-radius:7px;background:rgba(143,214,240,.16);
+    color:#CFE8F2;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:0 0 14px}
+  .st{background:rgba(120,150,190,.09);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .st u{display:block;text-decoration:none;font-size:10.5px;color:var(--dim);letter-spacing:.08em}
+  .st b{font-size:19px;font-weight:600}
+  #stars{font-size:26px;letter-spacing:.16em;color:var(--warm);margin:2px 0 8px;min-height:32px}
+  .acts{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+  .pri{background:linear-gradient(180deg,#4E7FA8,#3A6285);border:none;color:#fff;border-radius:12px;
+    padding:12px 26px;font-size:14.5px;font-family:var(--ui);cursor:pointer;letter-spacing:.06em}
+  .sec{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:12px;
+    padding:11px 18px;font-size:13px;font-family:var(--ui);cursor:pointer}
+  #levels{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:0 0 15px}
+  .lvb{aspect-ratio:1;border-radius:11px;border:1px solid var(--line);background:rgba(120,150,190,.09);
+    color:var(--ink);font-size:15px;cursor:pointer;font-family:var(--ui);display:flex;
+    flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .lvb s{text-decoration:none;font-size:9.5px;color:var(--warm);letter-spacing:.04em;min-height:12px}
+  .lvb.lock{opacity:.34;cursor:not-allowed}
+  .lvb.cur{border-color:var(--teal);background:rgba(111,216,208,.16)}
+  .tip{color:var(--dim);font-size:11.5px;margin-top:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div id="hud">
+      <div class="chip lv">第 <b id="uLv">1</b> 关</div>
+      <div class="chip">深 <b id="uDep">0</b></div>
+      <div id="airWrap">
+        <div class="lbl">气量 · 罐</div>
+        <div id="airBar"><div id="airN"></div><div id="airT"></div></div>
+      </div>
+      <div class="chip">采 <b id="uGot">0</b>/<b id="uTgt">2</b></div>
+      <div class="chip"><b id="uTime">0</b>s</div>
+    </div>
+    <div class="hint" id="gapHint">太宽了 · 按住 ▼ 放气缩小</div>
+    <div class="hint" id="shyHint">光太亮 · 缩小后它才敢出来</div>
+    <div class="hint" id="surfHint">还差 <b id="surfN">1</b> 种 · 潜回去找</div>
+    <button id="mute" title="静音">A</button>
+
+    <div id="portrait"><span>把设备<b>竖过来</b>更顺手，或直接用下方按钮</span><button id="pClose">&#10005;</button></div>
+
+    <div id="ctrl">
+      <button class="btn mini" id="bL"><span class="k">&#9664;</span><span class="t">左</span></button>
+      <button class="btn mini" id="bR"><span class="k">&#9654;</span><span class="t">右</span></button>
+      <button class="btn inf" id="bInf"><span class="k">&#9650;</span><span class="t">充气 W</span></button>
+      <button class="btn def" id="bDef"><span class="k">&#9660;</span><span class="t">放气 S</span></button>
+      <button class="btn mini" id="bRetry"><span class="k">&#8635;</span><span class="t">重来</span></button>
+      <button class="btn mini" id="bMenu"><span class="k">&#9776;</span><span class="t">选关</span></button>
+    </div>
+
+    <div id="ov"><div class="card" id="card"></div></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="render.js"></script>
+<script>
+(function(){
+'use strict';
+var B = window.BUBBLEDIVE, R = window.BUBBLEDIVE_RENDER;
+var VW = B.VW, VH = B.VH, HUD = 56, CTRL = 78;
+
+var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+var stage = document.getElementById('stage');
+var rd = R.create(B);
+var st = B.makeState();
+var key = { inf:false, def:false, l:false, r:false };
+var touch = { inf:false, def:false, l:false, r:false };
+var muted = false, unlocked = 1, best = {};
+var running = false, lastT = 0;
+var hintT = { gap:0, shy:0, surf:0 };
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------------- 存档 ---------------- */
+var SK = 'bubbledive.v1';
+function load(){
+  try{
+    var d = JSON.parse(localStorage.getItem(SK) || '{}');
+    muted = !!d.muted;
+    unlocked = Math.max(1, Math.min(8, d.unlocked|0 || 1));
+    best = d.best || {};
+  }catch(e){ muted=false; unlocked=1; best={}; }
+}
+function save(){
+  try{ localStorage.setItem(SK, JSON.stringify({muted:muted, unlocked:unlocked, best:best})); }catch(e){}
+}
+
+/* ---------------- 音效 ---------------- */
+var AC = null, master = null;
+function audio(){
+  if(AC) return AC;
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = 0.30; master.connect(AC.destination);
+  }catch(e){ AC = null; }
+  return AC;
+}
+var PENTA = [0,2,4,7,9];
+function tone(freq, dur, type, vol, delay){
+  if(muted || !audio()) return;
+  try{
+    var t0 = AC.currentTime + (delay||0);
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol||0.25, t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.03);
+  }catch(e){}
+}
+function noise(dur, vol, freq, q){
+  if(muted || !audio()) return;
+  try{
+    var n = Math.floor(AC.sampleRate*dur);
+    var buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0), i;
+    for(i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+    var src = AC.createBufferSource(); src.buffer = buf;
+    var bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=freq||900; bp.Q.value=q||1.1;
+    var g = AC.createGain(); g.gain.value = vol||0.16;
+    src.connect(bp); bp.connect(g); g.connect(master); src.start();
+  }catch(e){}
+}
+function sfx(e){
+  if(e.t==='pick'){
+    var k = (e.idx-1) % 10;
+    var semi = PENTA[k%5] + 12*Math.floor(k/5);
+    tone(392 * Math.pow(2, semi/12), 0.62, 'sine', 0.30, 0);
+    tone(784 * Math.pow(2, semi/12), 0.30, 'triangle', 0.10, 0.02);
+  } else if(e.t==='deflate'){ if(Math.random()<0.13) noise(0.16, 0.075, 1500, 0.8); }
+  else if(e.t==='vent'){ tone(196,0.5,'sine',0.20,0); tone(294,0.42,'triangle',0.12,0.05); }
+  else if(e.t==='bump'){ tone(88, 0.20, 'sine', 0.22, 0); noise(0.10, 0.07, 320, 0.9); }
+  else if(e.t==='rescue'){ tone(147,0.7,'sine',0.20,0); tone(220,0.6,'triangle',0.11,0.08); }
+  else if(e.t==='scare'){ tone(330,0.16,'sine',0.10,0); }
+  else if(e.t==='over'){
+    if(e.win){ [0,4,7,12].forEach(function(s,i){ tone(392*Math.pow(2,s/12), 0.85, 'sine', 0.24, i*0.13); }); }
+    else { tone(196,0.5,'sine',0.16,0); }
+  }
+}
+
+/* ---------------- 自适应缩放 ---------------- */
+function fit(){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var k = Math.min(vw / VW, (vh - 8) / (VH + HUD + CTRL));
+  k = Math.min(k, 1.32);
+  stage.style.width = VW + 'px';
+  stage.style.height = (VH + HUD + CTRL) + 'px';
+  stage.style.transform = 'scale(' + k + ')';
+  var pw = $('portrait'), hide = false;
+  try{ hide = !!sessionStorage.getItem('bd.pc'); }catch(e){}
+  pw.style.display = (vh > vw * 1.15 && !hide) ? 'flex' : 'none';
+}
+window.addEventListener('resize', fit);
+
+/* ---------------- HUD ---------------- */
+function setHint(el, on){ el.style.opacity = on ? '1' : '0'; }
+function paintHUD(){
+  $('uLv').textContent = st.lv;
+  $('uDep').textContent = Math.max(0, Math.round(st.by));
+  $('uGot').textContent = st.got;
+  $('uTgt').textContent = st.target;
+  $('uTime').textContent = Math.max(0, Math.ceil(B.TLIM - st.time));
+  var np = Math.max(0, Math.min(100, (st.n - B.NMIN) / (B.NMAX - B.NMIN) * 100));
+  var tp = Math.max(0, Math.min(100, st.tank / (B.TANK0 * 3) * 100));
+  $('airN').style.width = np + '%';
+  $('airT').style.left = np + '%';
+  $('airT').style.width = Math.min(tp, 100 - np) + '%';
+}
+
+/* ---------------- 遮罩 ---------------- */
+function showStart(){
+  $('card').innerHTML =
+    '<h1>气泡 · 深潜</h1>' +
+    '<p class="sub">你是一颗气泡，在无光的深渊里。<br>你有多大，就能看多远。</p>' +
+    '<div class="rows">' +
+    '<div class="row"><s>&#9650;</s><span><b>充气</b>：变大 → 浮得快、看得远，但费储气罐</span></div>' +
+    '<div class="row"><s>&#9660;</s><span><b>放气</b>：变小 → 往下沉、能钻窄缝，但<em>气永久丢失</em></span></div>' +
+    '<div class="row"><s>&#9664;&#9654;</s><span>摆尾横移，钻进岩缝采<i>深海生物</i></span></div>' +
+    '<div class="row"><s>!</s><span>水压会自己压扁你：<b>越往上浮，气泡越大，升得越快</b>。<br>' +
+    '想停在你想停的地方，就得舍得放气。</span></div>' +
+    '</div>' +
+    '<div class="acts"><button class="pri" id="go">下潜</button>' +
+    '<button class="sec" id="lvsel">选关</button></div>' +
+    '<p class="tip">键盘 W/S 充放气 · A/D 左右（方向键同效）｜ 触屏用下方按钮</p>';
+  $('ov').classList.remove('hide');
+  $('go').onclick = function(){ audio(); $('ov').classList.add('hide'); startLv(st.lv); };
+  $('lvsel').onclick = showLevels;
+}
+function showLevels(){
+  var h = '<h2>选择关卡</h2><div id="levels">', i;
+  for(i=1;i<=8;i++){
+    var lk = i > unlocked;
+    var s = (best[i] && best[i].stars) ? new Array(best[i].stars+1).join('★') : '';
+    h += '<button class="lvb'+(lk?' lock':'')+(i===st.lv?' cur':'')+'" data-lv="'+i+'"'+(lk?' disabled':'')+'>'+i+'<s>'+s+'</s></button>';
+  }
+  h += '</div><div class="acts"><button class="sec" id="back">返回</button></div>';
+  $('card').innerHTML = h;
+  $('ov').classList.remove('hide');
+  var bs = $('card').querySelectorAll('.lvb');
+  for(i=0;i<bs.length;i++){
+    (function(b){
+      b.onclick = function(){
+        if(b.getAttribute('disabled')) return;
+        $('ov').classList.add('hide'); startLv(parseInt(b.getAttribute('data-lv'),10));
+      };
+    })(bs[i]);
+  }
+  $('back').onclick = showStart;
+}
+function showOver(){
+  var th = B.STARS[st.lv-1];
+  var star = st.score >= th[2] ? 3 : (st.score >= th[1] ? 2 : (st.score >= th[0] ? 1 : 0));
+  var pb = best[st.lv] || {score:0, stars:0};
+  if(st.score > pb.score) best[st.lv] = {score:st.score, stars:star};
+  if(star > (pb.stars||0) && best[st.lv]) best[st.lv].stars = star;
+  if(st.win && st.lv >= unlocked && st.lv < 8) unlocked = st.lv + 1;
+  save();
+  var sHtml = '', i;
+  for(i=0;i<3;i++) sHtml += (i<star ? '★' : '☆');
+  $('card').innerHTML =
+    '<h2>' + (st.win ? '浮出海面' : '时间到了') + '</h2>' +
+    '<div id="stars">' + sHtml + '</div>' +
+    '<div class="stats">' +
+      '<div class="st"><u>采集</u><b>' + st.got + ' / ' + st.target + '</b></div>' +
+      '<div class="st"><u>剩余气</u><b>' + Math.round(st.n + st.tank) + '</b></div>' +
+      '<div class="st"><u>用时</u><b>' + st.time.toFixed(1) + 's</b></div>' +
+      '<div class="st"><u>得分</u><b>' + st.score + '</b></div>' +
+    '</div>' +
+    '<p class="sub">' + (st.win
+      ? '上浮是免费的，<em>停在你想停的地方才有代价</em>。'
+      : '越往上走，越要舍得<i>放气</i>。') + '</p>' +
+    '<div class="acts">' +
+      (st.win && st.lv < 8 ? '<button class="pri" id="next">下一关</button>' : '') +
+      '<button class="' + (st.win && st.lv<8 ? 'sec' : 'pri') + '" id="again">再来一次</button>' +
+      '<button class="sec" id="menu">选关</button></div>' +
+    '<p class="tip">历史最佳 ' + ((best[st.lv] && best[st.lv].score) || 0) + ' 分</p>';
+  $('ov').classList.remove('hide');
+  var nx = $('next');
+  if(nx) nx.onclick = function(){ $('ov').classList.add('hide'); startLv(Math.min(8, st.lv+1)); };
+  $('again').onclick = function(){ $('ov').classList.add('hide'); startLv(st.lv); };
+  $('menu').onclick = showLevels;
+}
+
+/* ---------------- 生命周期 ---------------- */
+function startLv(lv){
+  B.start(st, lv, lv*1013+77);
+  rd.attach(st.L);
+  rd.resize(cv, VW, VH);
+  key.inf=key.def=key.l=key.r=false;
+  touch.inf=touch.def=touch.l=touch.r=false;
+  syncBtn();
+  running = true; lastT = 0;
+  hintT.gap = hintT.shy = hintT.surf = 0;
+  paintHUD();
+}
+
+/* ---------------- 输入 ---------------- */
+function keyOf(e){
+  var c = e.code || '', k = (e.key || '').toLowerCase();
+  if(c==='KeyW'||c==='ArrowUp'||k==='w'||k==='arrowup') return 'inf';
+  if(c==='KeyS'||c==='ArrowDown'||k==='s'||k==='arrowdown') return 'def';
+  if(c==='KeyA'||c==='ArrowLeft'||k==='a'||k==='arrowleft') return 'l';
+  if(c==='KeyD'||c==='ArrowRight'||k==='d'||k==='arrowright') return 'r';
+  return null;
+}
+window.addEventListener('keydown', function(e){
+  var k = keyOf(e); if(!k) return;
+  e.preventDefault(); key[k] = true; audio(); syncBtn();
+}, {passive:false});
+window.addEventListener('keyup', function(e){
+  var k = keyOf(e); if(!k) return;
+  e.preventDefault(); key[k] = false; syncBtn();
+}, {passive:false});
+window.addEventListener('blur', function(){ key.inf=key.def=key.l=key.r=false; syncBtn(); });
+
+function bindHold(el, prop){
+  var on = function(e){ e.preventDefault(); touch[prop]=true; audio(); syncBtn(); };
+  var off = function(e){ if(e && e.preventDefault) e.preventDefault(); touch[prop]=false; syncBtn(); };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('pointerleave', off);
+}
+bindHold($('bInf'),'inf'); bindHold($('bDef'),'def');
+bindHold($('bL'),'l'); bindHold($('bR'),'r');
+function syncBtn(){
+  $('bInf').classList.toggle('on', key.inf||touch.inf);
+  $('bDef').classList.toggle('on', key.def||touch.def);
+  $('bL').classList.toggle('on', key.l||touch.l);
+  $('bR').classList.toggle('on', key.r||touch.r);
+}
+$('bRetry').onclick = function(){ $('ov').classList.add('hide'); startLv(st.lv); };
+$('bMenu').onclick = showLevels;
+$('mute').onclick = function(){ muted = !muted; $('mute').textContent = muted ? 'M' : 'A'; save(); };
+$('pClose').onclick = function(){ $('portrait').style.display='none'; try{sessionStorage.setItem('bd.pc','1');}catch(e){} };
+
+var drag = null;
+cv.addEventListener('pointerdown', function(e){ e.preventDefault(); drag = { x:e.clientX, id:e.pointerId }; audio(); }, {passive:false});
+cv.addEventListener('pointermove', function(e){
+  if(!drag || e.pointerId !== drag.id) return;
+  var dx = e.clientX - drag.x;
+  touch.l = dx < -14; touch.r = dx > 14; syncBtn();
+}, {passive:false});
+function endDrag(){ drag = null; touch.l = touch.r = false; syncBtn(); }
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('pointerleave', endDrag);
+
+/* ---------------- 主循环 ---------------- */
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(!running) return;
+  if(!lastT) lastT = ts;
+  var dt = (ts - lastT) / 1000; lastT = ts;
+  if(!isFinite(dt) || dt < 0) dt = 0;
+  if(dt > 0.05) dt = 0.05;
+
+  var inp = {
+    inflate: key.inf || touch.inf,
+    deflate: key.def || touch.def,
+    swim: (key.l||touch.l ? -1 : 0) + (key.r||touch.r ? 1 : 0)
+  };
+
+  /* 纪律：先 update → 再消费事件（音效/粒子）→ 再渲染 */
+  B.step(st, dt, inp);
+  var evs = st.events, i, over = false;
+  for(i=0;i<evs.length;i++){ sfx(evs[i]); rd.spawn(evs[i]); if(evs[i].t==='over') over = true; }
+  if(evs.length) evs.length = 0;
+  rd.update(dt);
+  ctx.setTransform(rd.dpr,0,0,rd.dpr,0,0);
+  rd.draw(ctx, st, ts/1000);
+
+  hintT.gap = st.squeeze >= 0.999 ? 0.9 : Math.max(0, hintT.gap - dt);
+  var nearShy = false;
+  for(i=0;i<st.L.cre.length;i++){
+    var cr = st.L.cre[i];
+    if(cr.shy && !cr.got && Math.abs(cr.y-st.by) < 190) nearShy = true;
+  }
+  hintT.shy = (nearShy && st.r > B.RSHY) ? 0.9 : Math.max(0, hintT.shy - dt);
+  hintT.surf = st.surf > 0 ? 0.9 : Math.max(0, hintT.surf - dt);
+  setHint($('gapHint'), hintT.gap > 0);
+  setHint($('shyHint'), hintT.shy > 0);
+  setHint($('surfHint'), hintT.surf > 0);
+  if(hintT.surf > 0) $('surfN').textContent = Math.max(1, st.target - st.got);
+  paintHUD();
+
+  if(over){ running = false; showOver(); }
+}
+
+/* ---------------- 启动 ---------------- */
+load();
+$('mute').textContent = muted ? 'M' : 'A';
+B.start(st, 1, 1*1013+77);
+rd.attach(st.L);
+rd.resize(cv, VW, VH);
+fit();
+paintHUD();
+showStart();
+requestAnimationFrame(frame);
+
+window.__bd = {
+  st: st, B: B, rd: rd,
+  start: function(lv, seed){ $('ov').classList.add('hide'); B.start(st, lv, (seed===undefined?lv*1013+77:seed)); rd.attach(st.L); running = true; lastT = 0; },
+  input: function(o){ if(!o) return;
+    if('inflate' in o) key.inf=!!o.inflate;
+    if('deflate' in o) key.def=!!o.deflate;
+    if('swim' in o){ key.l = o.swim<0; key.r = o.swim>0; }
+    syncBtn(); },
+  release: function(){ key.inf=key.def=key.l=key.r=false; syncBtn(); },
+  isRunning: function(){ return running; },
+  muted: function(){ return muted; },
+  unlocked: function(){ return unlocked; },
+  press: function(id){ var el=$(id); if(el) el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); },
+  up: function(id){ var el=$(id); if(el) el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true})); }
+};
+})();
+</script>
+</body>
+</html>
