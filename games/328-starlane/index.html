@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__wc_noctx__=1;document.addEventListener("contextmenu",function(e){e.preventDefault()},{capture:true});</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>星轨 · 引力穿行</title>
+<style>
+  :root{
+    --ink:#eaf2ff; --sub:#8fa6c8; --panel:rgba(10,16,34,.72);
+    --warm:#ffb368; --teal:#5fe6d0; --line:rgba(140,170,220,.18);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%; background:#05070f; overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",system-ui,sans-serif;
+    color:var(--ink); user-select:none; -webkit-user-select:none; touch-action:none;}
+  #wrap{position:fixed; inset:0;}
+  #game{display:block; width:100%; height:100%;}
+  /* HUD */
+  #hud{position:absolute; inset:0; pointer-events:none;}
+  .topbar{position:absolute; top:0; left:0; right:0; display:flex; align-items:center;
+    justify-content:space-between; padding:14px 18px; gap:10px;
+    font-variant-numeric:tabular-nums;}
+  .stat{background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:8px 14px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);}
+  .stat .k{font-size:11px; color:var(--sub); letter-spacing:.12em;}
+  .stat .v{font-size:20px; font-weight:700; line-height:1.1;}
+  #score .v{color:var(--warm);}
+  #combo{transition:transform .12s ease;}
+  #combo.bump{transform:scale(1.18);}
+  #mute{pointer-events:auto; cursor:pointer; width:42px; height:42px; border-radius:12px;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink);
+    display:flex; align-items:center; justify-content:center; font-size:18px;}
+  /* overlays */
+  .overlay{position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:18px;
+    background:radial-gradient(ellipse at 50% 38%, rgba(20,30,60,.62), rgba(4,6,14,.92));
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); padding:24px;}
+  .overlay.hidden{display:none;}
+  .title{font-size:clamp(30px,7vw,52px); font-weight:800; letter-spacing:.04em;
+    background:linear-gradient(90deg,var(--warm),var(--teal)); -webkit-background-clip:text;
+    background-clip:text; color:transparent;}
+  .sub{color:var(--sub); font-size:clamp(13px,3.4vw,16px); max-width:440px; line-height:1.7;}
+  .hint{color:var(--sub); font-size:13px; opacity:.85; max-width:420px; line-height:1.7;}
+  .btn{pointer-events:auto; cursor:pointer; border:none; border-radius:999px;
+    padding:14px 38px; font-size:17px; font-weight:700; color:#06121f;
+    background:linear-gradient(90deg,var(--warm),var(--teal));
+    box-shadow:0 10px 30px rgba(95,230,208,.25); transition:transform .1s ease;}
+  .btn:active{transform:scale(.96);}
+  .big{font-size:clamp(40px,11vw,72px); font-weight:800; color:var(--warm);
+    font-variant-numeric:tabular-nums; line-height:1;}
+  .row{display:flex; gap:26px; align-items:center; justify-content:center; flex-wrap:wrap;}
+  .row .cell .k{font-size:12px; color:var(--sub); letter-spacing:.1em;}
+  .row .cell .v{font-size:26px; font-weight:700;}
+  .core{color:var(--sub); font-size:13px; max-width:420px; line-height:1.7; opacity:.8;
+    font-style:normal;}
+  .pill{position:absolute; left:50%; transform:translateX(-50%); bottom:22px;
+    background:var(--panel); border:1px solid var(--line); border-radius:999px;
+    padding:7px 16px; font-size:12px; color:var(--sub); letter-spacing:.08em;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="topbar">
+      <div class="stat" id="score"><div class="k">星辉</div><div class="v">0</div></div>
+      <div class="stat" id="time"><div class="k">剩余</div><div class="v">60</div></div>
+      <div class="stat" id="combo"><div class="k">连击</div><div class="v">0</div></div>
+      <div class="stat" id="best"><div class="k">最佳</div><div class="v">0</div></div>
+      <div id="mute" title="静音">♪</div>
+    </div>
+    <div class="pill" id="pill">按住拖拽瞄准 · 松手发射星屑</div>
+  </div>
+
+  <div class="overlay" id="startScreen">
+    <div class="title">星轨 · 引力穿行</div>
+    <div class="sub">深空里漂着发光的星体，它们各自拉着一张看不见的网。<br/>你扔出一颗星屑，顺着这些引力，走出自己的弧线。</div>
+    <div class="hint">按住屏幕朝反方向拉，像弹弓一样蓄力 —— 松手放出星屑。<br/>穿过漂浮的光环收集星辉，连得越顺分越高。<br/>当心炽星与黑洞：撞上这一发就散了，但下一发随时能再放。</div>
+    <button class="btn" id="startBtn">放一颗星屑</button>
+  </div>
+
+  <div class="overlay hidden" id="endScreen">
+    <div class="title">这一程</div>
+    <div class="big" id="finalScore">0</div>
+    <div class="row">
+      <div class="cell"><div class="k">最佳</div><div class="v" id="finalBest">0</div></div>
+      <div class="cell"><div class="k">穿环</div><div class="v" id="finalRings">0</div></div>
+    </div>
+    <div class="core" id="coreLine">每一颗星屑都顺着别处的引力，走出自己的弧线。</div>
+    <button class="btn" id="againBtn">再放一颗</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+// ---------- canvas ----------
+var cv = document.getElementById('game');
+var ctx = cv.getContext('2d');
+var W = 0, H = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2.6);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildBgGrad();
+}
+window.addEventListener('resize', resize); resize();
+
+// ---------- DOM ----------
+var el = {
+  score: document.querySelector('#score .v'),
+  time: document.querySelector('#time .v'),
+  combo: document.querySelector('#combo .v'),
+  comboBox: document.getElementById('combo'),
+  best: document.querySelector('#best .v'),
+  pill: document.getElementById('pill'),
+  mute: document.getElementById('mute'),
+  start: document.getElementById('startScreen'),
+  end: document.getElementById('endScreen'),
+  startBtn: document.getElementById('startBtn'),
+  againBtn: document.getElementById('againBtn'),
+  finalScore: document.getElementById('finalScore'),
+  finalBest: document.getElementById('finalBest'),
+  finalRings: document.getElementById('finalRings'),
+  coreLine: document.getElementById('coreLine')
+};
+
+// ---------- audio ----------
+var actx = null, muted = false;
+function ensureAudio(){
+  if(actx) return;
+  try{ actx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ actx = null; }
+}
+var PENT = [0,2,4,7,9]; // major pentatonic semis
+function noteFreq(comboIdx){
+  var base = 261.63;
+  var step = PENT[comboIdx % 5] + 12 * Math.floor(comboIdx / 5);
+  return base * Math.pow(2, step/12);
+}
+function blip(freq, dur, type, gain){
+  if(muted || !actx) return;
+  try{
+    var t = actx.currentTime;
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain || 0.18, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.25));
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + (dur || 0.25) + 0.02);
+  }catch(e){}
+}
+function sfxLaunch(){ blip(150, 0.18, 'triangle', 0.14); blip(90, 0.22, 'sine', 0.10); }
+function sfxRing(combo){ blip(noteFreq(combo - 1), 0.30, 'sine', 0.20); blip(noteFreq(combo - 1)*2, 0.18, 'sine', 0.06); }
+function sfxCrash(){ blip(70, 0.34, 'square', 0.16); blip(48, 0.4, 'sawtooth', 0.10); }
+function sfxBonus(){ [0,4,7,12].forEach(function(s,i){ setTimeout(function(){ blip(261.63*Math.pow(2,s/12),0.28,'sine',0.16); }, i*70); }); }
+
+// ---------- helpers ----------
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function dist2(ax,ay,bx,by){ var dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; }
+
+// ---------- perf: cached gradient + glow sprites (no shadowBlur) ----------
+var bgGrad = null;
+function buildBgGrad(){
+  bgGrad = ctx.createLinearGradient(0,0,0,H);
+  bgGrad.addColorStop(0,'#070b18'); bgGrad.addColorStop(0.55,'#05070f'); bgGrad.addColorStop(1,'#03040a');
+}
+function hexToRgba(hex, a){
+  if(hex[0] !== '#') return hex;
+  var h = hex.slice(1);
+  if(h.length===3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n = parseInt(h,16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+// offscreen glow sprite cache: replaces expensive per-frame shadowBlur
+var glowCache = {};
+function glow(key, color, R, ca){
+  var ck = key + '|' + R + '|' + ca;
+  if(glowCache[ck]) return glowCache[ck];
+  var c = document.createElement('canvas');
+  c.width = c.height = Math.ceil(R*2);
+  var g = c.getContext('2d');
+  var grd = g.createRadialGradient(R,R,0,R,R,R);
+  grd.addColorStop(0, hexToRgba(color, ca));
+  grd.addColorStop(0.38, hexToRgba(color, ca*0.6));
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.beginPath(); g.arc(R,R,R,0,6.2832); g.fill();
+  glowCache[ck] = c; return c;
+}
+
+// ---------- constants ----------
+var G = 165;            // gravity strength multiplier
+var RING_R = 27;        // ring pass radius
+var PULL_K = 3.0;       // pull -> speed
+var MAX_SPEED = 880;
+var MIN_PULL = 22;
+var RING_COUNT = 6;
+var TIME_LIMIT = 60;
+
+// dopamine palette for bodies
+var PALETTE = ['#5fe6d0','#ff6fae','#ffd35f','#7c9bff','#9b7bff','#5fffa8','#ff8a5f'];
+
+// ---------- state ----------
+var state = {
+  mode:'start',            // start | play | over
+  score:0, best:0, time:0, combo:0, ringsCollected:0,
+  meter:0,
+  bodies:[], rings:[], comet:null,
+  aiming:false, aim:{x:0,y:0}, pad:{x:0,y:0},
+  stars:[],                // bg starfield
+  fx:[],                   // floating score texts / sparks
+  preview:null,            // cached trajectory preview points (recomputed on aim move only)
+  lastT:0, acc:0
+};
+state.best = parseInt(localStorage.getItem('starlane_best') || '0', 10) || 0;
+
+function buildStars(){
+  state.stars = [];
+  var n = Math.floor((W*H)/9000);
+  for(var i=0;i<n;i++){
+    state.stars.push({ x:Math.random()*W, y:Math.random()*H, r:rand(0.4,1.5), tw:rand(0,6.28), sp:rand(0.6,2.2) });
+  }
+}
+function padPos(){ return { x: W*0.5, y: H - Math.max(70, H*0.12) }; }
+
+function spawnBodies(){
+  state.bodies = [];
+  var pad = padPos();
+  var n = 2; // start with 2 stars
+  for(var i=0;i<n;i++) addBody('star', pad);
+}
+function addBody(type, pad){
+  pad = pad || padPos();
+  var tries = 0, x, y, ok=false;
+  while(tries++ < 40 && !ok){
+    x = rand(W*0.18, W*0.82);
+    y = rand(H*0.16, H*0.66);
+    ok = true;
+    if(pad && dist2(x,y,pad.x,pad.y) < 150*150) ok = false;
+    for(var i=0;i<state.bodies.length;i++){
+      if(dist2(x,y,state.bodies[i].x,state.bodies[i].y) < 120*120){ ok=false; break; }
+    }
+  }
+  if(type === 'blackhole'){
+    state.bodies.push({ type:'blackhole', x:x, y:y, g:rand(1.7e5,2.4e5), horizon:rand(26,36), r:14, color:'#1a1030', spin:0 });
+  } else {
+    var g = rand(0.9e5, 1.7e5);
+    state.bodies.push({ type:'star', x:x, y:y, g:g, r:rand(20,30), color:PALETTE[(Math.random()*PALETTE.length)|0], ph:rand(0,6.28) });
+  }
+}
+function spawnRings(){
+  state.rings = [];
+  for(var i=0;i<RING_COUNT;i++) addRing(true);
+}
+function addRing(initial){
+  var pad = padPos();
+  var tries=0, x, y, ok=false;
+  while(tries++ < 40 && !ok){
+    x = rand(W*0.12, W*0.88);
+    y = rand(H*0.14, H*0.62);
+    ok = true;
+    if(dist2(x,y,pad.x,pad.y) < 120*120) ok=false;
+    for(var i=0;i<state.rings.length;i++){ if(dist2(x,y,state.rings[i].x,state.rings[i].y)<90*90){ ok=false; break; } }
+    for(var j=0;j<state.bodies.length;j++){ if(dist2(x,y,state.bodies[j].x,state.bodies[j].y)<70*70){ ok=false; break; } }
+  }
+  state.rings.push({ x:x, y:y, r:RING_R, active:true, respawnT:0, ph:rand(0,6.28), got:false });
+}
+
+function newComet(){
+  var pad = padPos();
+  state.comet = { x:pad.x, y:pad.y, vx:0, vy:0, alive:false, trail:[] };
+}
+
+// ---------- launch & physics ----------
+function launch(vx, vy){
+  var pad = padPos();
+  state.comet = { x:pad.x, y:pad.y, vx:vx, vy:vy, alive:true, trail:[] };
+  state.combo = 0;
+  sfxLaunch();
+  setPill('穿过光环收集星辉');
+}
+function gravityAt(x, y, out){
+  out.ax = 0; out.ay = 0;
+  for(var i=0;i<state.bodies.length;i++){
+    var b = state.bodies[i];
+    var dx = b.x - x, dy = b.y - y;
+    var d2 = dx*dx + dy*dy;
+    var d = Math.sqrt(d2) || 1;
+    var f = G * b.g / Math.max(d2, 400); // softening
+    out.ax += f * dx / d;
+    out.ay += f * dy / d;
+  }
+}
+var _g = {ax:0, ay:0};
+// simulate trajectory for preview (does not mutate real comet)
+function predict(padx, pady, vx, vy, steps){
+  var pts = [], x=padx, y=pady, cx=vx, cy=vy, dt=1/60, sub=2, sdt=dt/sub;
+  for(var s=0;s<steps;s++){
+    for(var k=0;k<sub;k++){
+      gravityAt(x,y,_g);
+      cx += _g.ax * sdt; cy += _g.ay * sdt;
+      x += cx * sdt; y += cy * sdt;
+    }
+    pts.push({x:x,y:y});
+    if(x< -60 || x>W+60 || y< -60 || y>H+60) break;
+    var hit=false;
+    for(var i=0;i<state.bodies.length;i++){
+      var b=state.bodies[i];
+      if(dist2(x,y,b.x,b.y) < (b.type==='blackhole'?b.horizon*b.horizon:b.r*b.r)){ hit=true; break; }
+    }
+    if(hit) break;
+  }
+  return pts;
+}
+
+function updateComet(dt){
+  var c = state.comet; if(!c || !c.alive) return;
+  var sub = 2, sdt = dt/sub;
+  for(var k=0;k<sub;k++){
+    gravityAt(c.x, c.y, _g);
+    c.vx += _g.ax * sdt; c.vy += _g.ay * sdt;
+    c.x += c.vx * sdt; c.y += c.vy * sdt;
+  }
+  // trail
+  c.trail.push({x:c.x, y:c.y});
+  if(c.trail.length > 26) c.trail.shift();
+  // ring collection
+  for(var i=0;i<state.rings.length;i++){
+    var r = state.rings[i];
+    if(!r.active) continue;
+    if(dist2(c.x, c.y, r.x, r.y) < r.r*r.r){
+      r.active = false; r.respawnT = state.time + 0.45;
+      state.combo += 1;
+      var gain = 100 * state.combo;
+      state.score += gain;
+      state.ringsCollected += 1;
+      state.meter += 1;
+      sfxRing(state.combo);
+      bumpCombo();
+      addFx(r.x, r.y, '+'+gain, '#ffe6b0');
+      spark(r.x, r.y, r.color || '#fff');
+      if(state.meter >= 10){ state.meter = 0; state.score += 500; addFx(c.x, c.y-20, '蓄光 +500', '#5fe6d0'); sfxBonus(); }
+      maybeScale();
+    }
+  }
+  // body crash
+  for(var j=0;j<state.bodies.length;j++){
+    var b = state.bodies[j];
+    var rr = (b.type==='blackhole') ? b.horizon : b.r;
+    if(dist2(c.x, c.y, b.x, b.y) < rr*rr){
+      endFlight(b.type==='blackhole' ? '黑洞吞没了星屑' : '撞上炽星');
+      return;
+    }
+  }
+  // off screen
+  if(c.x < -70 || c.x > W+70 || c.y < -70 || c.y > H+70){
+    endFlight('星屑飘进了深空');
+  }
+}
+function endFlight(msg){
+  var c = state.comet;
+  if(c){ spark(c.x, c.y, '#ff8a5f'); }
+  state.comet = { x:padPos().x, y:padPos().y, vx:0, vy:0, alive:false, trail:[] };
+  state.combo = 0;
+  sfxCrash();
+  setPill(msg + ' · 再拉一次');
+}
+function maybeScale(){
+  // 陪练：随穿过环数增引力体
+  var rc = state.ringsCollected;
+  var stars = state.bodies.filter(function(b){return b.type==='star';}).length;
+  var bh = state.bodies.filter(function(b){return b.type==='blackhole';}).length;
+  if(rc >= 8 && stars < 3){ addBody('star'); }
+  else if(rc >= 20 && bh < 1){ addBody('blackhole'); }
+  else if(rc >= 36 && stars < 4){ addBody('star'); }
+  else if(rc >= 56 && bh < 2){ addBody('blackhole'); }
+  else if(rc >= 80 && stars < 5){ addBody('star'); }
+}
+
+// ---------- fx ----------
+function addFx(x,y,text,color){ state.fx.push({x:x,y:y,text:text,color:color,life:1.0}); }
+function spark(x,y,color){
+  for(var i=0;i<14;i++){
+    var a = Math.random()*6.28, sp = rand(40,200);
+    state.fx.push({x:x,y:y,px:Math.cos(a)*sp, py:Math.sin(a)*sp, color:color, life:0.6, spark:true});
+  }
+}
+function bumpCombo(){
+  el.comboBox.classList.remove('bump'); void el.comboBox.offsetWidth; el.comboBox.classList.add('bump');
+}
+
+// ---------- input ----------
+function evtPos(e){
+  var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  return { x: t.clientX, y: t.clientY };
+}
+function onDown(e){
+  if(state.mode !== 'play') return;
+  e.preventDefault();
+  var p = evtPos(e);
+  state.aiming = true; state.aim.x = p.x; state.aim.y = p.y;
+}
+function onMove(e){
+  if(!state.aiming) return;
+  e.preventDefault();
+  var p = evtPos(e); state.aim.x = p.x; state.aim.y = p.y;
+  var pad = padPos();
+  var dx = pad.x - state.aim.x, dy = pad.y - state.aim.y;
+  var pull = Math.sqrt(dx*dx + dy*dy);
+  if(pull >= MIN_PULL){
+    var sp = Math.min(pull * PULL_K, MAX_SPEED);
+    state.preview = predict(pad.x, pad.y, dx/pull * sp, dy/pull * sp, 130);
+  } else state.preview = null;
+}
+function onUp(e){
+  if(!state.aiming) return;
+  e.preventDefault();
+  state.aiming = false; state.preview = null;
+  var pad = padPos();
+  var dx = pad.x - state.aim.x, dy = pad.y - state.aim.y; // slingshot: pull back
+  var pull = Math.sqrt(dx*dx + dy*dy);
+  if(pull < MIN_PULL) return; // too small, cancel
+  var sp = Math.min(pull * PULL_K, MAX_SPEED);
+  launch(dx/pull * sp, dy/pull * sp);
+}
+cv.addEventListener('mousedown', onDown);
+window.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', onUp);
+cv.addEventListener('touchstart', onDown, {passive:false});
+cv.addEventListener('touchmove', onMove, {passive:false});
+cv.addEventListener('touchend', onUp, {passive:false});
+
+// ---------- UI ----------
+function setPill(t){ if(el.pill) el.pill.textContent = t; }
+function syncHUD(){
+  el.score.textContent = state.score;
+  el.time.textContent = Math.max(0, Math.ceil(state.time));
+  el.combo.textContent = state.combo;
+  el.best.textContent = Math.max(state.best, state.score);
+}
+el.mute.addEventListener('click', function(){
+  muted = !muted; el.mute.textContent = muted ? '✕' : '♪';
+  if(!muted) ensureAudio();
+});
+el.startBtn.addEventListener('click', function(){
+  ensureAudio();
+  if(actx && actx.state === 'suspended') actx.resume();
+  startGame();
+});
+el.againBtn.addEventListener('click', function(){
+  ensureAudio();
+  if(actx && actx.state === 'suspended') actx.resume();
+  startGame();
+});
+
+function startGame(){
+  resize(); buildStars(); spawnBodies(); spawnRings(); newComet();
+  state.score = 0; state.combo = 0; state.time = TIME_LIMIT; state.ringsCollected = 0; state.meter = 0;
+  state.fx = []; state.mode = 'play';
+  el.start.classList.add('hidden'); el.end.classList.add('hidden');
+  setPill('按住拖拽瞄准 · 松手发射星屑');
+  syncHUD();
+}
+function endGame(){
+  state.mode = 'over';
+  if(state.score > state.best){ state.best = state.score; localStorage.setItem('starlane_best', String(state.best)); }
+  el.finalScore.textContent = state.score;
+  el.finalBest.textContent = state.best;
+  el.finalRings.textContent = state.ringsCollected;
+  el.coreLine.textContent = pickCore();
+  el.end.classList.remove('hidden');
+  syncHUD();
+}
+var CORES = [
+  '每一颗星屑都顺着别处的引力，走出自己的弧线。',
+  '你不必瞄准终点，只要先动起来，路会自己弯向你。',
+  '散了就散了，下一颗随时能从掌心重新飞出去。'
+];
+function pickCore(){ return CORES[(Math.random()*CORES.length)|0]; }
+
+// ---------- update / render ----------
+function update(dt){
+  if(state.mode !== 'play') return;
+  state.time -= dt;
+  if(state.time <= 0){ state.time = 0; updateComet(0); endGame(); return; }
+  updateComet(dt);
+  // ring respawn
+  for(var i=0;i<state.rings.length;i++){
+    var r = state.rings[i];
+    if(!r.active && state.time <= r.respawnT){
+      // relocate
+      var pad = padPos(), tries=0, x,y,ok=false;
+      while(tries++ < 40 && !ok){
+        x = rand(W*0.12, W*0.88); y = rand(H*0.14, H*0.62); ok=true;
+        if(dist2(x,y,pad.x,pad.y) < 110*110) ok=false;
+        for(var j=0;j<state.bodies.length;j++){ if(dist2(x,y,state.bodies[j].x,state.bodies[j].y)<66*66){ ok=false; break; } }
+      }
+      r.x = x; r.y = y; r.active = true; r.ph = rand(0,6.28);
+    }
+  }
+  // fx
+  for(var f=state.fx.length-1; f>=0; f--){
+    var o = state.fx[f];
+    o.life -= dt * (o.spark ? 1.6 : 0.9);
+    if(o.spark){ o.x += o.px*dt; o.y += o.py*dt; o.px*=0.92; o.py*=0.92; }
+    else { o.y -= 26*dt; }
+    if(o.life <= 0) state.fx.splice(f,1);
+  }
+  syncHUD();
+}
+
+function render(){
+  var t = (state.lastT || 0);
+  // bg (cached gradient)
+  ctx.fillStyle = bgGrad; ctx.fillRect(0,0,W,H);
+  // starfield
+  for(var i=0;i<state.stars.length;i++){
+    var s = state.stars[i];
+    var a = 0.35 + 0.45*Math.sin(t*0.001*s.sp + s.tw);
+    ctx.globalAlpha = a; ctx.fillStyle = '#cfe0ff';
+    ctx.fillRect(s.x, s.y, s.r, s.r);
+  }
+  ctx.globalAlpha = 1;
+
+  if(state.mode === 'start'){ return; }
+
+  // rings (glow via lighter, no shadowBlur)
+  for(var ri=0; ri<state.rings.length; ri++){
+    var r = state.rings[ri];
+    if(!r.active) continue;
+    var pulse = 1 + 0.08*Math.sin(t*0.004 + r.ph);
+    var R = r.r*pulse;
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(120,210,255,0.55)'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(0,0, R, 0, 6.2832); ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(200,240,255,0.95)';
+    ctx.beginPath(); ctx.arc(0,0, R, 0, 6.2832); ctx.stroke();
+    ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0,0, R*0.6, 0, 6.2832); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // bodies
+  for(var bi=0; bi<state.bodies.length; bi++){
+    var b = state.bodies[bi];
+    ctx.save(); ctx.translate(b.x, b.y);
+    if(b.type === 'blackhole'){
+      b.spin += 0.02;
+      var R = b.horizon*2.4;
+      var bs = glow('bh','#7b46c8', R, 0.32);
+      ctx.drawImage(bs, -R, -R, R*2, R*2);
+      ctx.rotate(b.spin);
+      ctx.strokeStyle = 'rgba(180,140,255,0.85)'; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(0,0,b.horizon*1.5, 0.3, 3.6); ctx.stroke();
+      ctx.fillStyle = '#08040f'; ctx.beginPath(); ctx.arc(0,0,b.horizon,0,6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(150,110,230,0.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0,0,b.horizon,0,6.2832); ctx.stroke();
+    } else {
+      var R2 = b.r*2.6;
+      var gsc = glow('s'+b.color, b.color, R2, 0.5);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(gsc, -R2, -R2, R2*2, R2*2);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = b.color;
+      ctx.beginPath(); ctx.arc(0,0,b.r,0,6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.arc(-b.r*0.28,-b.r*0.28,b.r*0.34,0,6.2832); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // aim preview
+  if(state.aiming && state.mode === 'play' && state.preview){
+    var pad = padPos();
+    var pts = state.preview;
+    var dx = pad.x - state.aim.x, dy = pad.y - state.aim.y;
+    var pull = Math.sqrt(dx*dx + dy*dy);
+    ctx.save();
+    ctx.setLineDash([2,9]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,179,104,0.65)';
+    ctx.beginPath();
+    for(var p=0;p<pts.length;p++){ if(p===0) ctx.moveTo(pts[p].x,pts[p].y); else ctx.lineTo(pts[p].x,pts[p].y); }
+    ctx.stroke(); ctx.setLineDash([]);
+    // launch arrow
+    ctx.strokeStyle = 'rgba(255,179,104,0.9)'; ctx.lineWidth = 3;
+    var ax = pad.x + dx/pull*42, ay = pad.y + dy/pull*42;
+    ctx.beginPath(); ctx.moveTo(pad.x, pad.y); ctx.lineTo(ax, ay); ctx.stroke();
+    ctx.restore();
+    // pad glow (glow sprite, no shadowBlur)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var ps = glow('comet','#ffb368', 16, 0.5);
+    ctx.drawImage(ps, pad.x-16, pad.y-16, 32, 32);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(255,179,104,0.9)';
+    ctx.beginPath(); ctx.arc(pad.x, pad.y, 7, 0, 6.2832); ctx.fill(); ctx.restore();
+  } else if(state.comet && !state.comet.alive && state.mode === 'play'){
+    // idle comet on pad (glow sprite, no shadowBlur)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var ips = glow('comet','#ffb368', 14, 0.5);
+    ctx.drawImage(ips, state.comet.x-14, state.comet.y-14, 28, 28);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(255,179,104,0.95)';
+    ctx.beginPath(); ctx.arc(state.comet.x, state.comet.y, 6, 0, 6.2832); ctx.fill(); ctx.restore();
+  }
+
+  // comet + trail (唯一暖点)
+  var c = state.comet;
+  if(c && c.alive){
+    for(var ti=c.trail.length-1; ti>=0; ti--){
+      var tp = c.trail[ti];
+      var k = (ti+1)/c.trail.length;
+      ctx.globalAlpha = 0.05 + 0.5*k;
+      ctx.fillStyle = 'rgba(255,179,104,'+(0.5*k)+')';
+      ctx.beginPath(); ctx.arc(tp.x, tp.y, 1 + 4*k, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var cs = glow('comet','#ffb368', 22, 0.5);
+    ctx.drawImage(cs, c.x-22, c.y-22, 44, 44);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#ffd9a8';
+    ctx.beginPath(); ctx.arc(c.x, c.y, 6.5, 0, 6.2832); ctx.fill();
+    ctx.restore();
+  }
+
+  // fx
+  for(var fi=0; fi<state.fx.length; fi++){
+    var o = state.fx[fi];
+    ctx.globalAlpha = Math.max(0, o.life);
+    if(o.spark){
+      ctx.fillStyle = o.color || '#fff';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 2.2, 0, 6.2832); ctx.fill();
+    } else {
+      ctx.fillStyle = o.color || '#fff';
+      ctx.font = '700 16px system-ui,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(o.text, o.x, o.y);
+    }
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left';
+}
+
+// ---------- loop ----------
+function frame(ts){
+  if(!state.lastT) state.lastT = ts;
+  var dt = (ts - state.lastT) / 1000;
+  state.lastT = ts;
+  if(dt > 0.05) dt = 0.05; // clamp
+  update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+buildStars(); newComet();
+requestAnimationFrame(frame);
+
+// ---------- test hook ----------
+window.__STARLANE = {
+  get state(){ return state; },
+  start: startGame,
+  // fire with explicit velocity (px/s)
+  fire: function(vx, vy){ if(state.mode!=='play') startGame(); launch(vx, vy); },
+  // advance simulation by `sec` seconds in fixed steps
+  advance: function(sec){
+    var steps = Math.max(1, Math.round(sec / (1/60)));
+    for(var i=0;i<steps;i++){ update(1/60); }
+  },
+  bodies: function(){ return state.bodies.length; },
+  rings: function(){ return state.rings.length; }
+};
+
+})();
+</script>
+</body>
+</html>
